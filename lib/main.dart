@@ -345,21 +345,37 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
       );
     }
 
-    return MasonryGridView.count(
-      controller: widget.scrollController,
-      physics:
-          const AlwaysScrollableScrollPhysics(), // Đệm vật lý gốc: Quăng mạnh kịch trần là đứng lại ngay
-      padding: const EdgeInsets.all(4.0),
-      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-      mainAxisSpacing: 4.0,
-      crossAxisSpacing: 4.0,
-      itemCount: widget.images.length,
-      itemBuilder: (context, index) {
-        final imageUrl = widget.images[index]['download_url'];
-        final aspectRatio = widget.images[index]['aspect_ratio'] as double;
+    return Stack(
+      children: [
+        MasonryGridView.count(
+          controller: widget.scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(4.0),
+          crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
+          mainAxisSpacing: 4.0,
+          crossAxisSpacing: 4.0,
+          itemCount: widget.images.length,
+          itemBuilder: (context, index) {
+            final imageUrl = widget.images[index]['download_url'];
+            final aspectRatio = widget.images[index]['aspect_ratio'] as double;
 
-        return _ImageGridItem(imageUrl: imageUrl, aspectRatio: aspectRatio);
-      },
+            return _ImageGridItem(imageUrl: imageUrl, aspectRatio: aspectRatio);
+          },
+        ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              widget.onRefresh();
+            },
+            backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+            foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+            child: const Icon(Icons.refresh),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1215,19 +1231,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
               ),
             ),
           ),
-          // Nút Quay lại
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
-            left: 8,
-            child: AnimatedOpacity(
-              opacity: _isDragging ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 200),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-          ),
+
         ],
       ),
     );
