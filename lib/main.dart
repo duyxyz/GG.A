@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
@@ -242,7 +243,6 @@ class _MainScreenState extends State<MainScreen> {
         selectedIndex: _selectedIndex,
         onDestinationSelected: (int index) {
           if (_selectedIndex == 0 && index == 0) {
-            // Nếu đang ở Home mà lại bấm Home tiếp thì cuộn lên đầu trang
             if (_homeScrollController.hasClients) {
               _homeScrollController.animateTo(
                 0,
@@ -251,6 +251,7 @@ class _MainScreenState extends State<MainScreen> {
               );
             }
           }
+          HapticFeedback.lightImpact();
           setState(() {
             _selectedIndex = index;
           });
@@ -333,29 +334,21 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: widget.onRefresh,
-      backgroundColor: Colors.black87,
-      color: Colors.white,
-      strokeWidth: 2.5,
-      displacement: 60,
-      edgeOffset: 10,
-      child: MasonryGridView.count(
-        controller: widget.scrollController,
-        physics:
-            const AlwaysScrollableScrollPhysics(), // Đệm vật lý gốc: Quăng mạnh kịch trần là đứng lại ngay
-        padding: const EdgeInsets.all(4.0),
-        crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-        mainAxisSpacing: 4.0,
-        crossAxisSpacing: 4.0,
-        itemCount: widget.images.length,
-        itemBuilder: (context, index) {
-          final imageUrl = widget.images[index]['download_url'];
-          final aspectRatio = widget.images[index]['aspect_ratio'] as double;
+    return MasonryGridView.count(
+      controller: widget.scrollController,
+      physics:
+          const AlwaysScrollableScrollPhysics(), // Đệm vật lý gốc: Quăng mạnh kịch trần là đứng lại ngay
+      padding: const EdgeInsets.all(4.0),
+      crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
+      mainAxisSpacing: 4.0,
+      crossAxisSpacing: 4.0,
+      itemCount: widget.images.length,
+      itemBuilder: (context, index) {
+        final imageUrl = widget.images[index]['download_url'];
+        final aspectRatio = widget.images[index]['aspect_ratio'] as double;
 
-          return _ImageGridItem(imageUrl: imageUrl, aspectRatio: aspectRatio);
-        },
-      ),
+        return _ImageGridItem(imageUrl: imageUrl, aspectRatio: aspectRatio);
+      },
     );
   }
 }
@@ -383,76 +376,39 @@ class _ImageGridItemState extends State<_ImageGridItem>
 
     return InkWell(
       onTap: () {
-        // Sử dụng lại dạng Popup (Dialog) nhưng lấp đầy toàn màn hình bằng Dialog.fullscreen
-        // Điều này đảm bảo trang chủ ở dưới KHÔNG HỀ thay đổi trạng thái và sinh ra lỗi chớp hình
-        showDialog(
-          context: context,
-          // useSafeArea = false để vùng đen tràn sát viền khuyết màn hình
-          useSafeArea: false,
-          builder: (context) => Dialog.fullscreen(
-            backgroundColor: Colors.black,
-            child: Stack(
-              children: [
-                Center(
-                  child: InteractiveViewer(
-                    minScale: 1.0,
-                    maxScale: 5.0, // Cho phép zoom tới 5x
-                    child: CachedNetworkImage(
-                      imageUrl: widget.imageUrl,
-                      fit: BoxFit.contain,
-                      width: double.infinity,
-                      height: double.infinity,
-                      placeholder: (context, url) => Center(
-                        child: Shimmer.fromColors(
-                          baseColor: Colors.grey.withValues(alpha: 0.3),
-                          highlightColor: Colors.grey.withValues(alpha: 0.1),
-                          child: Container(
-                            width: 100,
-                            height: 100,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                      errorWidget: (context, url, error) =>
-                          const Icon(Icons.error, color: Colors.white),
-                    ),
-                  ),
-                ),
-                // Nút Quay lại mô phỏng AppBar
-                Positioned(
-                  top: MediaQuery.of(context).padding.top + 8,
-                  left: 8,
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ),
-              ],
-            ),
+        HapticFeedback.selectionClick();
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            opaque: false,
+            barrierColor: Colors.black,
+            pageBuilder: (context, animation, secondaryAnimation) {
+              return FullScreenImageViewer(imageUrl: widget.imageUrl);
+            },
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
           ),
         );
       },
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8.0),
         child: AspectRatio(
           aspectRatio: widget.aspectRatio,
-          child: CachedNetworkImage(
-            imageUrl: widget.imageUrl,
-            fit: BoxFit.cover,
-            // fadeInDuration tắt đi để không bị hiệu ứng chếp hình/mờ lại mỗi lần lướt hoặc quay lại
-            fadeInDuration: Duration.zero,
-            fadeOutDuration: Duration.zero,
-            placeholder: (context, url) => Shimmer.fromColors(
-              baseColor: Colors.grey.withValues(alpha: 0.3),
-              highlightColor: Colors.grey.withValues(alpha: 0.1),
-              child: Container(
-                color: Colors.white,
+          child: Hero(
+            tag: widget.imageUrl,
+            child: CachedNetworkImage(
+              imageUrl: widget.imageUrl,
+              fit: BoxFit.cover,
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
+              placeholder: (context, url) => Shimmer.fromColors(
+                baseColor: Colors.grey.withValues(alpha: 0.3),
+                highlightColor: Colors.grey.withValues(alpha: 0.1),
+                child: Container(
+                  color: Colors.white,
+                ),
               ),
+              errorWidget: (context, url, error) => const Icon(Icons.error),
             ),
-            errorWidget: (context, url, error) => const Icon(Icons.error),
           ),
         ),
       ),
@@ -480,6 +436,7 @@ class _AddTabState extends State<AddTab> {
 
   // 1. Chỉ chọn ảnh và show ra UI
   Future<void> _pickImage() async {
+    HapticFeedback.lightImpact();
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
       if (image != null) {
@@ -498,7 +455,30 @@ class _AddTabState extends State<AddTab> {
 
   // 2. Nén và tải ảnh lên Github
   Future<void> _uploadImage() async {
+    HapticFeedback.lightImpact();
     if (_previewImage == null) return;
+    
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Xác nhận Đăng Ảnh'),
+          content: const Text('Bạn có chắc chắn muốn đăng bức ảnh này lên Bộ Sưu Tập chung không?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Đồng ý'),
+            ),
+          ],
+        );
+      },
+    );
+    
+    if (confirm != true) return;
 
     setState(() => _isUploading = true);
 
@@ -517,13 +497,23 @@ class _AddTabState extends State<AddTab> {
         throw Exception("Compression failed");
       }
 
-      // Tính tên file (index cao nhất + 1)
+      // Tính tên file (tìm số trống nhỏ nhất, bắt đầu từ 1)
       int nextIndex = 1;
       if (widget.images.isNotEmpty) {
-        final maxIndex = widget.images.reduce(
-          (curr, next) => curr['index'] > next['index'] ? curr : next,
-        )['index'];
-        nextIndex = maxIndex + 1;
+        // Lấy tất cả các index hiện có và sắp xếp tăng dần
+        List<int> existingIndexes = widget.images
+            .map<int>((img) => img['index'] as int)
+            .toList()
+          ..sort();
+
+        // Tìm số nhỏ nhất bị thiếu (missing number)
+        for (int i = 0; i < existingIndexes.length; i++) {
+          if (existingIndexes[i] == nextIndex) {
+            nextIndex++; // Số này đã có, tăng lên 1 để kiểm tra số tiếp theo
+          } else if (existingIndexes[i] > nextIndex) {
+            break; // Đã tìm thấy khoảng trống
+          }
+        }
       }
 
       final filename = '$nextIndex.webp';
@@ -665,6 +655,30 @@ class _DeleteTabState extends State<DeleteTab> {
 
   Future<void> _deleteSelected() async {
     if (_selectedSha.isEmpty) return;
+    
+    HapticFeedback.lightImpact();
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Xác nhận Xóa Ảnh'),
+          content: Text('Bạn có chắc chắn muốn xóa vĩnh viễn ${_selectedSha.length} bức ảnh đã chọn khỏi Bộ Sưu Tập không? Hành động này không thể hoàn tác.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Xóa vĩnh viễn'),
+            ),
+          ],
+        );
+      },
+    );
+    
+    if (confirm != true) return;
 
     setState(() => _isDeleting = true);
 
@@ -752,6 +766,7 @@ class _DeleteTabState extends State<DeleteTab> {
 
               return GestureDetector(
                 onTap: () {
+                  HapticFeedback.selectionClick();
                   setState(() {
                     if (isSelected) {
                       _selectedSha.remove(img['sha']);
@@ -940,6 +955,7 @@ class _SettingsTabState extends State<SettingsTab> {
                   
                   return GestureDetector(
                     onTap: () {
+                      HapticFeedback.selectionClick();
                       MyApp.themeColorNotifier.value = color;
                     },
                     child: Container(
@@ -967,6 +983,132 @@ class _SettingsTabState extends State<SettingsTab> {
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+}
+
+// ----------------------------------------------------------------------
+// 5. WIDGET XEM ẢNH TOÀN MÀN HÌNH (Full Screen Viewer)
+// ----------------------------------------------------------------------
+class FullScreenImageViewer extends StatefulWidget {
+  final String imageUrl;
+
+  const FullScreenImageViewer({super.key, required this.imageUrl});
+
+  @override
+  State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
+  Offset _dragOffset = Offset.zero;
+  double _scale = 1.0;
+  bool _isDragging = false;
+  final TransformationController _transformationController =
+      TransformationController();
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Độ mờ của nền dựa trên khoảng cách kéo (tối đa 300px)
+    final double opacity =
+        (1.0 - (_dragOffset.dy.abs() / 300)).clamp(0.0, 1.0);
+
+    return Scaffold(
+      backgroundColor: Colors.black.withValues(alpha: opacity),
+      body: Stack(
+        children: [
+          GestureDetector(
+            onVerticalDragStart: (details) {
+              final scale = _transformationController.value.getMaxScaleOnAxis();
+              if (scale <= 1.0) {
+                setState(() {
+                  _isDragging = true;
+                });
+              }
+            },
+            onVerticalDragUpdate: (details) {
+              if (_isDragging) {
+                setState(() {
+                  _dragOffset += details.delta;
+                  // Giảm scale khi kéo ra xa tâm (tối thiểu 0.6)
+                  _scale = (1.0 - (_dragOffset.dy.abs() / 1500)).clamp(0.6, 1.0);
+                });
+              }
+            },
+            onVerticalDragEnd: (details) {
+              if (_isDragging) {
+                if (_dragOffset.dy.abs() > 100) {
+                  // Kéo đủ xa -> Thoát
+                  Navigator.of(context).pop();
+                } else {
+                  // Kéo chưa đủ -> Trả về vị trí cũ
+                  setState(() {
+                    _isDragging = false;
+                    _dragOffset = Offset.zero;
+                    _scale = 1.0;
+                  });
+                }
+              }
+            },
+            child: Transform.translate(
+              offset: _dragOffset,
+              child: Transform.scale(
+                scale: _scale,
+                child: Center(
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    minScale: 1.0,
+                    maxScale: 5.0,
+                    child: Hero(
+                      tag: widget.imageUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrl,
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                        placeholder: (context, url) => Center(
+                          child: Shimmer.fromColors(
+                            baseColor: Colors.grey.withValues(alpha: 0.3),
+                            highlightColor: Colors.grey.withValues(alpha: 0.1),
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Nút Quay lại
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            child: AnimatedOpacity(
+              opacity: _isDragging ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
