@@ -10,9 +10,20 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Load settings trước khi chạy app
+  final prefs = await SharedPreferences.getInstance();
+  
+  final themeIndex = prefs.getInt('themeMode') ?? 0; // 0: system, 1: light, 2: dark
+  final colorValue = prefs.getInt('themeColor') ?? Colors.blueAccent.value;
+  
+  MyApp.themeNotifier.value = ThemeMode.values[themeIndex];
+  MyApp.themeColorNotifier.value = Color(colorValue);
+
   runApp(const MyApp());
 }
 
@@ -893,8 +904,12 @@ class _SettingsTabState extends State<SettingsTab> {
           builder: (context, currentMode, _) {
             return RadioGroup<ThemeMode>(
               groupValue: currentMode,
-              onChanged: (ThemeMode? value) {
-                if (value != null) MyApp.themeNotifier.value = value;
+              onChanged: (ThemeMode? value) async {
+                if (value != null) {
+                  MyApp.themeNotifier.value = value;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('themeMode', value.index);
+                }
               },
               child: Column(
                 children: [
@@ -954,9 +969,11 @@ class _SettingsTabState extends State<SettingsTab> {
                   final isSelected = currentColor == color;
                   
                   return GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       HapticFeedback.selectionClick();
                       MyApp.themeColorNotifier.value = color;
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setInt('themeColor', color.value);
                     },
                     child: Container(
                       width: 48,
