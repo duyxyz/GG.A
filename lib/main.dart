@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -475,18 +476,37 @@ class AddTab extends StatefulWidget {
 class _AddTabState extends State<AddTab> {
   bool _isUploading = false;
   final ImagePicker _picker = ImagePicker();
+  XFile? _previewImage; // Biến lưu tạm ảnh để xem trước
 
-  Future<void> _pickAndUploadImage() async {
+  // 1. Chỉ chọn ảnh và show ra UI
+  Future<void> _pickImage() async {
     try {
       final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image == null) return;
+      if (image != null) {
+        setState(() {
+          _previewImage = image;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi chọn ảnh: $e')),
+        );
+      }
+    }
+  }
 
-      setState(() => _isUploading = true);
+  // 2. Nén và tải ảnh lên Github
+  Future<void> _uploadImage() async {
+    if (_previewImage == null) return;
 
+    setState(() => _isUploading = true);
+
+    try {
       // Nén & chuyển sang webp
       final Uint8List? compressedBytes =
           await FlutterImageCompress.compressWithFile(
-            image.path,
+            _previewImage!.path,
             minWidth: 1920,
             minHeight: 1920,
             quality: 80,
@@ -500,8 +520,6 @@ class _AddTabState extends State<AddTab> {
       // Tính tên file (index cao nhất + 1)
       int nextIndex = 1;
       if (widget.images.isNotEmpty) {
-        // Ảnh đang được sắp xếp giảm dần, nên phần tử đầu tiên là cao nhất
-        // Thêm kiểm tra phòng ngừa
         final maxIndex = widget.images.reduce(
           (curr, next) => curr['index'] > next['index'] ? curr : next,
         )['index'];
@@ -516,17 +534,27 @@ class _AddTabState extends State<AddTab> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tải ảnh lên thành công!')),
         );
+        // Thành công thì xóa preview đi để về màn hình pick ảnh ban đầu
+        setState(() {
+          _previewImage = null;
+        });
       }
       await widget.onRefresh();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ).showSnackBar(SnackBar(content: Text('Lỗi tải lên: $e')));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
+  }
+
+  void _cancelPreview() {
+    setState(() {
+      _previewImage = null;
+    });
   }
 
   @override
@@ -547,23 +575,65 @@ class _AddTabState extends State<AddTab> {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.cloud_upload_outlined, size: 80),
-            const SizedBox(height: 32),
-            FilledButton(
-              onPressed: _pickAndUploadImage,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
+        child: _previewImage != null
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        File(_previewImage!.path),
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _cancelPreview,
+                          icon: const Icon(Icons.close),
+                          label: const Text('Hủy'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _uploadImage,
+                          icon: const Icon(Icons.cloud_upload),
+                          label: const Text('Đăng ảnh'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.add_photo_alternate_outlined, size: 80),
+                  const SizedBox(height: 32),
+                  FilledButton(
+                    onPressed: _pickImage,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                    ),
+                    child: const Text('Chọn ảnh từ thiết bị'),
+                  ),
+                ],
               ),
-              child: const Text('Chọn ảnh từ thiết bị'),
-            ),
-          ],
-        ),
       ),
     );
   }
