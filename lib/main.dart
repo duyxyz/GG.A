@@ -1016,37 +1016,34 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   Widget build(BuildContext context) {
     // Độ mờ của nền dựa trên khoảng cách kéo (tối đa 300px)
     final double opacity =
-        (1.0 - (_dragOffset.dy.abs() / 300)).clamp(0.0, 1.0);
+        (1.0 - (_dragOffset.distance / 300)).clamp(0.0, 1.0);
 
     return Scaffold(
       backgroundColor: Colors.black.withValues(alpha: opacity),
       body: Stack(
         children: [
-          GestureDetector(
-            onVerticalDragStart: (details) {
+          Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: (event) {
               final scale = _transformationController.value.getMaxScaleOnAxis();
               if (scale <= 1.0) {
+                _isDragging = true;
+              }
+            },
+            onPointerMove: (event) {
+              if (_isDragging) {
                 setState(() {
-                  _isDragging = true;
+                  _dragOffset += event.delta;
+                  final double distance = _dragOffset.distance;
+                  _scale = (1.0 - (distance / 1500)).clamp(0.6, 1.0);
                 });
               }
             },
-            onVerticalDragUpdate: (details) {
+            onPointerUp: (event) {
               if (_isDragging) {
-                setState(() {
-                  _dragOffset += details.delta;
-                  // Giảm scale khi kéo ra xa tâm (tối thiểu 0.6)
-                  _scale = (1.0 - (_dragOffset.dy.abs() / 1500)).clamp(0.6, 1.0);
-                });
-              }
-            },
-            onVerticalDragEnd: (details) {
-              if (_isDragging) {
-                if (_dragOffset.dy.abs() > 100) {
-                  // Kéo đủ xa -> Thoát
+                if (_dragOffset.distance > 100) {
                   Navigator.of(context).pop();
                 } else {
-                  // Kéo chưa đủ -> Trả về vị trí cũ
                   setState(() {
                     _isDragging = false;
                     _dragOffset = Offset.zero;
@@ -1064,6 +1061,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                     transformationController: _transformationController,
                     minScale: 1.0,
                     maxScale: 5.0,
+                    panEnabled: !_isDragging,
+                    scaleEnabled: !_isDragging,
                     child: Hero(
                       tag: widget.imageUrl,
                       child: CachedNetworkImage(
