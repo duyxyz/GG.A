@@ -11,6 +11,8 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -283,7 +285,7 @@ class _MainScreenState extends State<MainScreen> {
             ),
             AddTab(images: _images, onRefresh: _loadData),
             DeleteTab(images: _images, onRefresh: _loadData),
-            const SettingsTab(),
+            SettingsTab(isSelected: _selectedIndex == 3),
           ],
         ),
       ),
@@ -1007,18 +1009,73 @@ class _DeleteTabState extends State<DeleteTab> {
 // 4. TRANG SETTINGS (Cài đặt & Lịch sử)
 // ----------------------------------------------------------------------
 class SettingsTab extends StatefulWidget {
-  const SettingsTab({super.key});
+  final bool isSelected;
+  const SettingsTab({super.key, this.isSelected = false});
 
   @override
   State<SettingsTab> createState() => _SettingsTabState();
 }
 
 class _SettingsTabState extends State<SettingsTab> {
+  String _cacheSize = 'Đang tính...';
+
   @override
   void initState() {
     super.initState();
     // Mỗi khi vào tab Settings, ép cập nhật lại số Hz thật
     _updateHz();
+    _calculateCacheSize();
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Nếu tab Settings vừa được chọn (chuyển từ tab khác qua), tính lại cache
+    if (widget.isSelected && !oldWidget.isSelected) {
+      _calculateCacheSize();
+    }
+  }
+
+  Future<void> _calculateCacheSize() async {
+    try {
+      int totalSize = 0;
+      
+      // Danh sách các thư mục cần quét (Chỉ Temp và Support mới là Cache)
+      final dirs = [
+        await getTemporaryDirectory(),
+        await getApplicationSupportDirectory(),
+      ];
+
+      for (final dir in dirs) {
+        if (dir.existsSync()) {
+          try {
+            await for (final file in dir.list(recursive: true, followLinks: false)) {
+              if (file is File) {
+                try {
+                  totalSize += await file.length();
+                } catch (_) {
+                  // Bỏ qua nếu không truy cập được file
+                }
+              }
+            }
+          } catch (_) {
+            // Bỏ qua nếu không liệt kê được thư mục
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+          _cacheSize = '${(totalSize / (1024 * 1024)).toStringAsFixed(1)} MB';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _cacheSize = '0.0 MB';
+        });
+      }
+    }
   }
 
   Future<void> _updateHz() async {
@@ -1199,6 +1256,53 @@ class _SettingsTabState extends State<SettingsTab> {
             );
           },
         ),
+        const Divider(),
+        ListTile(
+          title: const Text('Xoá bộ nhớ đệm'),
+          subtitle: Text('Dung lượng đang dùng: $_cacheSize'),
+          leading: const Icon(Icons.delete_outline),
+          onTap: () async {
+            AppHaptics.mediumImpact();
+            
+            // 1. Xoá cache của flutter_cache_manager (chủ yếu là ảnh)
+            await DefaultCacheManager().emptyCache();
+            
+            // 2. Xoá thủ công toàn bộ file trong các thư mục mà chúng ta quét dung lượng
+            try {
+              final dirs = [
+                await getTemporaryDirectory(),
+                await getApplicationSupportDirectory(),
+              ];
+              
+              for (final dir in dirs) {
+                if (dir.existsSync()) {
+                  // listSync để lấy danh sách nhanh và xoá các file bên trong
+                  final entities = dir.listSync(recursive: true, followLinks: false);
+                  for (final entity in entities) {
+                    if (entity is File) {
+                      try {
+                        await entity.delete();
+                      } catch (_) {}
+                    }
+                  }
+                }
+              }
+            } catch (_) {}
+
+            // Đợi một chút để hệ thống file xử lý xong rồi mới tính lại dung lượng
+            await Future.delayed(const Duration(milliseconds: 400));
+            await _calculateCacheSize(); 
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Đã xoá sạch bộ nhớ đệm!'),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
         const SizedBox(height: 24),
       ],
     );
@@ -1328,7 +1432,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   }
 
   // ---------- ANIMATION ----------
-
+  
   void _animateReset({required double targetScale, required Offset targetOffset}) {
     final startScale = _scale;
     final startOffset = _offset;
