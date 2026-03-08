@@ -20,9 +20,11 @@ void main() async {
   
   final themeIndex = prefs.getInt('themeMode') ?? 0; // 0: system, 1: light, 2: dark
   final colorValue = prefs.getInt('themeColor') ?? Colors.blueAccent.value;
+  final hapticsEnabled = prefs.getBool('hapticsEnabled') ?? true;
   
   MyApp.themeNotifier.value = ThemeMode.values[themeIndex];
   MyApp.themeColorNotifier.value = Color(colorValue);
+  MyApp.hapticNotifier.value = hapticsEnabled;
 
   runApp(const MyApp());
 }
@@ -147,6 +149,24 @@ class NoStretchScrollBehavior extends ScrollBehavior {
   }
 }
 
+class AppHaptics {
+  static void lightImpact() {
+    if (MyApp.hapticNotifier.value) HapticFeedback.lightImpact();
+  }
+
+  static void mediumImpact() {
+    if (MyApp.hapticNotifier.value) HapticFeedback.mediumImpact();
+  }
+
+  static void heavyImpact() {
+    if (MyApp.hapticNotifier.value) HapticFeedback.heavyImpact();
+  }
+
+  static void selectionClick() {
+    if (MyApp.hapticNotifier.value) HapticFeedback.selectionClick();
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -159,6 +179,9 @@ class MyApp extends StatelessWidget {
   static final ValueNotifier<Color> themeColorNotifier = ValueNotifier(
     Colors.blueAccent,
   );
+
+  // Trình lắng nghe bật/tắt rung haptic
+  static final ValueNotifier<bool> hapticNotifier = ValueNotifier(true);
 
   @override
   Widget build(BuildContext context) {
@@ -271,7 +294,7 @@ class _MainScreenState extends State<MainScreen> {
               );
             }
           }
-          HapticFeedback.lightImpact();
+          AppHaptics.lightImpact();
           setState(() {
             _selectedIndex = index;
           });
@@ -387,7 +410,7 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
           bottom: 16,
           child: FloatingActionButton(
             onPressed: () {
-              HapticFeedback.lightImpact();
+              AppHaptics.lightImpact();
               widget.onRefresh();
             },
             backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
@@ -423,7 +446,7 @@ class _ImageGridItemState extends State<_ImageGridItem>
 
     return InkWell(
       onTap: () {
-        HapticFeedback.selectionClick();
+        AppHaptics.selectionClick();
         Navigator.of(context).push(
           PageRouteBuilder(
             opaque: false,
@@ -504,7 +527,7 @@ class _AddTabState extends State<AddTab> {
 
   // 1. Chọn nhiều ảnh và thêm vào danh sách
   Future<void> _pickImage() async {
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     try {
       final List<XFile> images = await _picker.pickMultiImage();
       if (images.isNotEmpty) {
@@ -523,7 +546,7 @@ class _AddTabState extends State<AddTab> {
 
   // 2. Nén và tải từng ảnh lên Github
   Future<void> _uploadImage() async {
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     if (_selectedImages.isEmpty) return;
 
     final bool? confirm = await showDialog<bool>(
@@ -620,14 +643,14 @@ class _AddTabState extends State<AddTab> {
   }
 
   void _removeImage(int index) {
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     setState(() {
       _selectedImages.removeAt(index);
     });
   }
 
   void _clearSelection() {
-    HapticFeedback.mediumImpact();
+    AppHaptics.mediumImpact();
     setState(() {
       _selectedImages.clear();
     });
@@ -784,7 +807,7 @@ class _DeleteTabState extends State<DeleteTab> {
   Future<void> _deleteSelected() async {
     if (_selectedSha.isEmpty) return;
     
-    HapticFeedback.lightImpact();
+    AppHaptics.lightImpact();
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -895,7 +918,7 @@ class _DeleteTabState extends State<DeleteTab> {
 
               return GestureDetector(
                 onTap: () {
-                  HapticFeedback.selectionClick();
+                  AppHaptics.selectionClick();
                   setState(() {
                     if (isSelected) {
                       _selectedSha.remove(img['sha']);
@@ -1002,10 +1025,34 @@ class _SettingsTabState extends State<SettingsTab> {
           valueListenable: GithubService.apiRemaining,
           builder: (context, remaining, _) {
             return ListTile(
-              title: Text(
-                '$remaining / 5000',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              title: const Text(
+                'Giới hạn API',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
+              trailing: Text(
+                '$remaining/5000',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            );
+          },
+        ),
+        const Divider(),
+        ValueListenableBuilder<bool>(
+          valueListenable: MyApp.hapticNotifier,
+          builder: (context, hapticsEnabled, _) {
+            return SwitchListTile(
+              title: const Text('Rung phản hồi'),
+              subtitle: const Text('Phản hồi xúc giác khi chạm, vuốt'),
+              secondary: const Icon(Icons.vibration),
+              value: hapticsEnabled,
+              onChanged: (bool value) async {
+                MyApp.hapticNotifier.value = value;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('hapticsEnabled', value);
+                if (value) {
+                  AppHaptics.lightImpact(); // Khỏi wrapper để user nhận biết ngay khi bật
+                }
+              },
             );
           },
         ),
@@ -1074,17 +1121,18 @@ class _SettingsTabState extends State<SettingsTab> {
             return ListTile(
               title: const Text('Chọn màu tùy chỉnh'),
               subtitle: const Text('Nhấn để mở bảng màu'),
-              trailing: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: currentColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Theme.of(context).colorScheme.outline),
+              trailing: Material(
+                color: currentColor,
+                elevation: 0,
+                clipBehavior: Clip.antiAlias,
+                shape: const CircleBorder(),
+                child: const SizedBox(
+                  width: 36,
+                  height: 36,
                 ),
               ),
               onTap: () {
-                HapticFeedback.selectionClick();
+                AppHaptics.selectionClick();
                 showDialog(
                   context: context,
                   builder: (context) {
@@ -1106,7 +1154,7 @@ class _SettingsTabState extends State<SettingsTab> {
                             final isSelected = currentColor.value == color.value;
                             return GestureDetector(
                               onTap: () async {
-                                HapticFeedback.selectionClick();
+                                AppHaptics.selectionClick();
                                 MyApp.themeColorNotifier.value = color;
                                 final prefs = await SharedPreferences.getInstance();
                                 await prefs.setInt('themeColor', color.value);
