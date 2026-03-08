@@ -1125,151 +1125,208 @@ class FullScreenImageViewer extends StatefulWidget {
   State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
 }
 
-class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
-  final TransformationController _transformationController =
-      TransformationController();
-  Offset _dragOffset = Offset.zero;
+class _FullScreenImageViewerState extends State<FullScreenImageViewer>
+    with TickerProviderStateMixin {
+  // ===== Zoom & Pan state =====
   double _scale = 1.0;
-  bool _isDragging = false;
-  int _pointerCount = 0; // Đếm số lượng ngón tay trên màn hình
+  double _baseScale = 1.0; // _scale tại thời điểm gesture bắt đầu
+  Offset _offset = Offset.zero;
+  Offset _baseOffset = Offset.zero; // _offset tại thời điểm gesture bắt đầu
+  Offset _startFocalPoint = Offset.zero;
+
+  // ===== Swipe-to-dismiss state =====
+  bool _isDismissing = false;
+  Offset _dismissOffset = Offset.zero;
+  double _dismissScale = 1.0;
+
+  // ===== Animation =====
+  AnimationController? _resetAnim;
 
   @override
   void dispose() {
-    _transformationController.dispose();
+    _resetAnim?.dispose();
     super.dispose();
   }
 
+  // ---------- GESTURE CALLBACKS ----------
+
+  void _onScaleStart(ScaleStartDetails details) {
+    _resetAnim?.stop();
+    _baseScale = _scale;
+    _baseOffset = _offset;
+    _startFocalPoint = details.localFocalPoint;
+
+    // Dismiss chỉ khi: 1 ngón tay + ảnh ở trạng thái gốc (chưa zoom / chưa pan)
+    _isDismissing =
+        details.pointerCount == 1 && _scale <= 1.01 && _offset.distance < 5;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    setState(() {
+      if (details.pointerCount >= 2) {
+        // ===== ZOOM MODE =====
+        // Nếu đang dismiss thì hủy, chuyển sang zoom
+        if (_isDismissing) {
+          _isDismissing = false;
+          _dismissOffset = Offset.zero;
+          _dismissScale = 1.0;
+          // Cập nhật lại điểm gốc cho gesture zoom
+          _baseScale = _scale;
+          _baseOffset = _offset;
+          _startFocalPoint = details.localFocalPoint;
+          return;
+        }
+
+        final newScale = (_baseScale * details.scale).clamp(0.5, 5.0);
+        final double k = newScale / _scale; // Tỉ lệ scale thay đổi lần này
+
+        // Zoom quanh focal point: giữ điểm giữa 2 ngón tay đứng yên
+        final screenSize = MediaQuery.of(context).size;
+        final center = Offset(screenSize.width / 2, screenSize.height / 2);
+        final focal = details.localFocalPoint;
+        _offset = (focal - center) * (1 - k) + _offset * k;
+        _scale = newScale;
+      } else if (_isDismissing) {
+        // ===== DISMISS MODE =====
+        _dismissOffset += details.focalPointDelta;
+        _dismissScale =
+            (1.0 - (_dismissOffset.distance / 1500)).clamp(0.6, 1.0);
+      } else if (_scale > 1.01) {
+        // ===== PAN MODE (1 ngón tay khi đã zoom) =====
+        _offset += details.focalPointDelta;
+      }
+    });
+  }
+
+  void _onScaleEnd(ScaleEndDetails details) {
+    if (_isDismissing) {
+      _isDismissing = false;
+      if (_dismissOffset.distance > 100) {
+        Navigator.of(context).pop();
+      } else {
+        setState(() {
+          _dismissOffset = Offset.zero;
+          _dismissScale = 1.0;
+        });
+      }
+      return;
+    }
+
+    // Bounce back nếu scale < 1.0
+    if (_scale < 1.0) {
+      _animateReset(targetScale: 1.0, targetOffset: Offset.zero);
+    } else if (_scale <= 1.05 && _offset.distance > 1) {
+      // Gần 1.0 nhưng bị lệch → reset
+      _animateReset(targetScale: 1.0, targetOffset: Offset.zero);
+    }
+  }
+
+  // Double-tap: toggle zoom 2.5x ↔ 1.0x
+  void _onDoubleTap() {
+    if (_scale > 1.05) {
+      _animateReset(targetScale: 1.0, targetOffset: Offset.zero);
+    } else {
+      _animateReset(targetScale: 2.5, targetOffset: Offset.zero);
+    }
+  }
+
+  // ---------- ANIMATION ----------
+
+  void _animateReset({required double targetScale, required Offset targetOffset}) {
+    final startScale = _scale;
+    final startOffset = _offset;
+
+    _resetAnim?.dispose();
+    _resetAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+
+    final curved = CurvedAnimation(
+      parent: _resetAnim!,
+      curve: Curves.easeOut,
+    );
+
+    curved.addListener(() {
+      setState(() {
+        final t = curved.value;
+        _scale = startScale + (targetScale - startScale) * t;
+        _offset = Offset.lerp(startOffset, targetOffset, t)!;
+      });
+    });
+
+    _resetAnim!.forward();
+  }
+
+  // ---------- BUILD ----------
+
   @override
   Widget build(BuildContext context) {
-    // Độ mờ của nền dựa trên khoảng cách kéo (tối đa 300px)
-    final double opacity =
-        (1.0 - (_dragOffset.distance / 300)).clamp(0.0, 1.0);
+    final double bgOpacity = _isDismissing
+        ? (1.0 - (_dismissOffset.distance / 300)).clamp(0.0, 1.0)
+        : 1.0;
 
     return Scaffold(
-      backgroundColor: Colors.black.withValues(alpha: opacity),
-      body: Stack(
-        children: [
-          Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: (event) {
-              setState(() {
-                _pointerCount++;
-              });
-            },
-            onPointerMove: (event) {
-              final scale = _transformationController.value.getMaxScaleOnAxis();
-
-              // Chỉ cho phép kéo thoát nếu:
-              // 1. Chỉ có 1 ngón tay chạm
-              // 2. Không đang phóng to (scale <= 1.0)
-              if (_pointerCount == 1 && scale <= 1.0) {
-                if (!_isDragging) {
-                  // Nếu chưa bắt đầu kéo, kiểm tra xem đã di chuyển đủ xa chưa (threshold)
-                  if (event.localDelta.distance > 2) {
-                    setState(() {
-                      _isDragging = true;
-                    });
-                  }
-                }
-
-                if (_isDragging) {
-                  setState(() {
-                    _dragOffset += event.delta;
-                    final double distance = _dragOffset.distance;
-                    _scale = (1.0 - (distance / 1500)).clamp(0.6, 1.0);
-                  });
-                }
-              } else if (_pointerCount > 1) {
-                // Nếu có nhiều hơn 1 ngón tay, hủy trạng thái kéo thoát ngay lập tức
-                if (_isDragging) {
-                  setState(() {
-                    _isDragging = false;
-                    _dragOffset = Offset.zero;
-                    _scale = 1.0;
-                  });
-                }
-              }
-            },
-            onPointerUp: (event) {
-              setState(() {
-                _pointerCount--;
-              });
-
-              if (_pointerCount == 0 && _isDragging) {
-                if (_dragOffset.distance > 100) {
-                  Navigator.of(context).pop();
-                } else {
-                  setState(() {
-                    _isDragging = false;
-                    _dragOffset = Offset.zero;
-                    _scale = 1.0;
-                  });
-                }
-              }
-            },
-            onPointerCancel: (event) {
-              setState(() {
-                _pointerCount = 0;
-                _isDragging = false;
-                _dragOffset = Offset.zero;
-                _scale = 1.0;
-              });
-            },
-            child: Transform.translate(
-              offset: _dragOffset,
-              child: Transform.scale(
-                scale: _scale,
-                child: Center(
-                  child: InteractiveViewer(
-                    transformationController: _transformationController,
-                    clipBehavior: Clip.none,
-                    minScale: 1.0,
-                    maxScale: 5.0,
-                    panEnabled: !_isDragging,
-                    scaleEnabled: !_isDragging,
-                    child: Hero(
-                      tag: widget.imageUrl,
-                      flightShuttleBuilder: (
-                        flightContext,
-                        animation,
-                        flightDirection,
-                        fromHeroContext,
-                        toHeroContext,
-                      ) {
-                        return AspectRatio(
-                          aspectRatio: widget.aspectRatio,
-                          child: CachedNetworkImage(
-                            imageUrl: widget.imageUrl,
-                            fit: BoxFit.cover,
-                            fadeInDuration: Duration.zero,
-                            fadeOutDuration: Duration.zero,
-                          ),
-                        );
-                      },
-                      child: AspectRatio(
+      backgroundColor: Colors.black.withValues(alpha: bgOpacity),
+      body: GestureDetector(
+        onScaleStart: _onScaleStart,
+        onScaleUpdate: _onScaleUpdate,
+        onScaleEnd: _onScaleEnd,
+        onDoubleTap: _onDoubleTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox.expand(
+          child: Transform.translate(
+            offset: _isDismissing ? _dismissOffset : Offset.zero,
+            child: Transform.scale(
+              scale: _isDismissing ? _dismissScale : 1.0,
+              child: Center(
+                child: Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..translate(_offset.dx, _offset.dy)
+                    ..scale(_scale),
+                  child: Hero(
+                    tag: widget.imageUrl,
+                    flightShuttleBuilder: (
+                      flightContext,
+                      animation,
+                      flightDirection,
+                      fromHeroContext,
+                      toHeroContext,
+                    ) {
+                      return AspectRatio(
                         aspectRatio: widget.aspectRatio,
                         child: CachedNetworkImage(
                           imageUrl: widget.imageUrl,
                           fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          placeholder: (context, url) => Center(
-                            child: Shimmer.fromColors(
-                              baseColor: Colors.grey.withValues(alpha: 0.3),
-                              highlightColor: Colors.grey.withValues(alpha: 0.1),
-                              child: Container(
-                                width: 100,
-                                height: 100,
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
+                          fadeInDuration: Duration.zero,
+                          fadeOutDuration: Duration.zero,
+                        ),
+                      );
+                    },
+                    child: AspectRatio(
+                      aspectRatio: widget.aspectRatio,
+                      child: CachedNetworkImage(
+                        imageUrl: widget.imageUrl,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        placeholder: (context, url) => Center(
+                          child: Shimmer.fromColors(
+                            baseColor: Colors.grey.withValues(alpha: 0.3),
+                            highlightColor: Colors.grey.withValues(alpha: 0.1),
+                            child: Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
                               ),
                             ),
                           ),
-                          errorWidget: (context, url, error) =>
-                              const Icon(Icons.error, color: Colors.white),
                         ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.error, color: Colors.white),
                       ),
                     ),
                   ),
@@ -1277,9 +1334,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
               ),
             ),
           ),
-
-        ],
+        ),
       ),
     );
   }
 }
+
+
