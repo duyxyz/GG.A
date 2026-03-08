@@ -13,6 +13,9 @@ import 'package:shimmer/shimmer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
+import 'package:path/path.dart' as p;
+import 'package:local_auth/local_auth.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,11 +26,13 @@ void main() async {
   final themeIndex = prefs.getInt('themeMode') ?? 0; // 0: system, 1: light, 2: dark
   final colorValue = prefs.getInt('themeColor') ?? Colors.blueAccent.value;
   final hapticsEnabled = prefs.getBool('hapticsEnabled') ?? true;
+  final lockEnabled = prefs.getBool('lockEnabled') ?? false;
   final gridCols = prefs.getInt('gridColumns') ?? 2;
   
   MyApp.themeNotifier.value = ThemeMode.values[themeIndex];
   MyApp.themeColorNotifier.value = Color(colorValue);
   MyApp.hapticNotifier.value = hapticsEnabled;
+  MyApp.lockNotifier.value = lockEnabled;
   MyApp.gridColumnsNotifier.value = gridCols;
 
   runApp(const MyApp());
@@ -187,6 +192,9 @@ class MyApp extends StatelessWidget {
   // Trình lắng nghe bật/tắt rung haptic
   static final ValueNotifier<bool> hapticNotifier = ValueNotifier(true);
 
+  // Trình lắng nghe khóa ứng dụng (Biometric)
+  static final ValueNotifier<bool> lockNotifier = ValueNotifier(false);
+
   // Trình lắng nghe số lượng cột lưới ảnh (1, 2, 3)
   static final ValueNotifier<int> gridColumnsNotifier = ValueNotifier(2);
 
@@ -215,9 +223,129 @@ class MyApp extends StatelessWidget {
               themeMode: currentMode,
               themeAnimationDuration: const Duration(milliseconds: 500),
               themeAnimationCurve: Curves.easeInOut,
-              home: const MainScreen(),
+              home: const AuthWrapper(child: MainScreen()),
             );
           },
+        );
+      },
+    );
+  }
+}
+
+class AuthWrapper extends StatefulWidget {
+  final Widget child;
+  const AuthWrapper({super.key, required this.child});
+
+  @override
+  State<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
+  final LocalAuthentication auth = LocalAuthentication();
+  bool _isAuthenticated = false;
+  bool _isAuthenticating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Nếu đang bật khóa, hiển thị màn hình khóa trước, bắt đầu xác thực
+    if (MyApp.lockNotifier.value) {
+      _checkAuth();
+    } else {
+      _isAuthenticated = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Khi app quay lại từ background, nếu đang bật khóa và chưa xác thực thì yêu cầu xác thực
+    if (state == AppLifecycleState.resumed && MyApp.lockNotifier.value && !_isAuthenticated) {
+      _checkAuth();
+    }
+    
+    // Khi app xuống hẳn background (paused), khóa app lại ngay lập tức
+    if (state == AppLifecycleState.paused && MyApp.lockNotifier.value) {
+      setState(() => _isAuthenticated = false);
+    }
+  }
+
+  Future<void> _checkAuth() async {
+    if (_isAuthenticating || !MyApp.lockNotifier.value) return;
+    
+    setState(() => _isAuthenticating = true);
+
+    try {
+      final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
+      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+
+      if (!canAuthenticate) {
+        // Nếu máy không hỗ trợ khóa thì thôi (hoặc có thể dùng PIN máy)
+        setState(() => _isAuthenticated = true);
+        return;
+      }
+
+      final bool didAuthenticate = await auth.authenticate(
+        localizedReason: 'Xác thực để mở khóa kho ảnh 12A1',
+      );
+
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = didAuthenticate;
+          _isAuthenticating = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isAuthenticated = true; // Cho phép vào nếu lỗi hệ thống xác thực
+          _isAuthenticating = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: MyApp.lockNotifier,
+      builder: (context, isLockEnabled, _) {
+        if (!isLockEnabled || _isAuthenticated) {
+          return widget.child;
+        }
+
+        return Scaffold(
+          body: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  Theme.of(context).colorScheme.surface,
+                ],
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_person_outlined, size: 100, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 64),
+                IconButton.filled(
+                  onPressed: _checkAuth,
+                  icon: const Icon(Icons.fingerprint, size: 32),
+                  padding: const EdgeInsets.all(20),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
@@ -271,63 +399,74 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: [
-            HomeTab(
-              images: _images,
-              isLoading: _isLoading,
-              error: _error,
-              onRefresh: _loadData,
-              scrollController: _homeScrollController,
+    return PopScope(
+      canPop: _selectedIndex == 0,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_selectedIndex != 0) {
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+      },
+      child: Scaffold(
+        body: SafeArea(
+          child: IndexedStack(
+            index: _selectedIndex,
+            children: [
+              HomeTab(
+                images: _images,
+                isLoading: _isLoading,
+                error: _error,
+                onRefresh: _loadData,
+                scrollController: _homeScrollController,
+              ),
+              AddTab(images: _images, onRefresh: _loadData),
+              DeleteTab(images: _images, onRefresh: _loadData),
+              SettingsTab(isSelected: _selectedIndex == 3),
+            ],
+          ),
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _selectedIndex,
+          onDestinationSelected: (int index) {
+            if (_selectedIndex == 0 && index == 0) {
+              if (_homeScrollController.hasClients) {
+                _homeScrollController.animateTo(
+                  0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                );
+              }
+            }
+            AppHaptics.lightImpact();
+            setState(() {
+              _selectedIndex = index;
+            });
+          },
+          destinations: const <NavigationDestination>[
+            NavigationDestination(
+              selectedIcon: Icon(Icons.home),
+              icon: Icon(Icons.home_outlined),
+              label: 'Home',
             ),
-            AddTab(images: _images, onRefresh: _loadData),
-            DeleteTab(images: _images, onRefresh: _loadData),
-            SettingsTab(isSelected: _selectedIndex == 3),
+            NavigationDestination(
+              selectedIcon: Icon(Icons.add_circle),
+              icon: Icon(Icons.add_circle_outline),
+              label: 'Add',
+            ),
+            NavigationDestination(
+              selectedIcon: Icon(Icons.delete),
+              icon: Icon(Icons.delete_outline),
+              label: 'Delete',
+            ),
+            NavigationDestination(
+              selectedIcon: Icon(Icons.settings),
+              icon: Icon(Icons.settings_outlined),
+              label: 'Settings',
+            ),
           ],
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (int index) {
-          if (_selectedIndex == 0 && index == 0) {
-            if (_homeScrollController.hasClients) {
-              _homeScrollController.animateTo(
-                0,
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeOut,
-              );
-            }
-          }
-          AppHaptics.lightImpact();
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            selectedIcon: Icon(Icons.home),
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.add_circle),
-            icon: Icon(Icons.add_circle_outline),
-            label: 'Add',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.delete),
-            icon: Icon(Icons.delete_outline),
-            label: 'Delete',
-          ),
-          NavigationDestination(
-            selectedIcon: Icon(Icons.settings),
-            icon: Icon(Icons.settings_outlined),
-            label: 'Settings',
-          ),
-        ],
       ),
     );
   }
@@ -1123,6 +1262,25 @@ class _SettingsTabState extends State<SettingsTab> {
             );
           },
         ),
+        ValueListenableBuilder<bool>(
+          valueListenable: MyApp.lockNotifier,
+          builder: (context, lockEnabled, _) {
+            return SwitchListTile(
+              title: const Text('Khoá ứng dụng'),
+              subtitle: const Text('Sử dụng vân tay hoặc khuôn mặt'),
+              secondary: const Icon(Icons.security),
+              value: lockEnabled,
+              onChanged: (bool value) async {
+                MyApp.lockNotifier.value = value;
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('lockEnabled', value);
+                if (value) {
+                  AppHaptics.lightImpact();
+                }
+              },
+            );
+          },
+        ),
         const Divider(),
         ValueListenableBuilder<int>(
           valueListenable: MyApp.gridColumnsNotifier,
@@ -1431,6 +1589,75 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     }
   }
 
+  // ---------- DOWNLOAD & CONVERT ----------
+  bool _isDownloading = false;
+
+  Future<void> _downloadImage() async {
+    if (_isDownloading) return;
+    Navigator.pop(context); // Đóng popup menu trước khi bắt đầu tải
+
+    setState(() {
+      _isDownloading = true;
+    });
+    AppHaptics.mediumImpact();
+
+    try {
+      // 1. Tải dữ liệu ảnh từ URL
+      final response = await http.get(Uri.parse(widget.imageUrl));
+      if (response.statusCode != 200) {
+        throw Exception("Server trả về lỗi: ${response.statusCode}");
+      }
+      
+      final Uint8List imageBytes = response.bodyBytes;
+      if (imageBytes.isEmpty) throw Exception("Dữ liệu ảnh trống");
+
+      // 2. Chuyển đổi sang JPEG (vì máy có thể ko đọc đc WebP tải về trực tiếp)
+      final Uint8List? jpegBytes = await FlutterImageCompress.compressWithList(
+        imageBytes,
+        format: CompressFormat.jpeg,
+        quality: 95,
+      );
+
+      if (jpegBytes == null || jpegBytes.isEmpty) {
+        throw Exception("Không thể chuyển đổi định dạng ảnh");
+      }
+
+      // 3. Kiểm tra quyền
+      final hasAccess = await Gal.hasAccess();
+      if (!hasAccess) {
+        final granted = await Gal.requestAccess();
+        if (!granted) throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
+      }
+
+      // 4. Lưu vào máy
+      final fileName = p.basenameWithoutExtension(widget.imageUrl);
+      await Gal.putImageBytes(jpegBytes, name: fileName);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã lưu vào bộ sưu tập'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("Download error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
   // ---------- ANIMATION ----------
   
   void _animateReset({required double targetScale, required Offset targetOffset}) {
@@ -1469,65 +1696,102 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
 
     return Scaffold(
       backgroundColor: Colors.black.withValues(alpha: bgOpacity),
-      body: GestureDetector(
-        onScaleStart: _onScaleStart,
-        onScaleUpdate: _onScaleUpdate,
-        onScaleEnd: _onScaleEnd,
-        onDoubleTap: _onDoubleTap,
-        behavior: HitTestBehavior.opaque,
-        child: SizedBox.expand(
-          child: Transform.translate(
-            offset: _isDismissing ? _dismissOffset : Offset.zero,
-            child: Transform.scale(
-              scale: _isDismissing ? _dismissScale : 1.0,
-              child: Center(
-                child: Transform(
-                  alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..translate(_offset.dx, _offset.dy)
-                    ..scale(_scale),
-                  child: Hero(
-                    tag: widget.imageUrl,
-                    flightShuttleBuilder: (
-                      flightContext,
-                      animation,
-                      flightDirection,
-                      fromHeroContext,
-                      toHeroContext,
-                    ) {
-                      return AspectRatio(
-                        aspectRatio: widget.aspectRatio,
-                        child: CachedNetworkImage(
-                          imageUrl: widget.imageUrl,
-                          fit: BoxFit.cover,
-                          fadeInDuration: Duration.zero,
-                          fadeOutDuration: Duration.zero,
+      body: Stack(
+        children: [
+          GestureDetector(
+            onScaleStart: _onScaleStart,
+            onScaleUpdate: _onScaleUpdate,
+            onScaleEnd: _onScaleEnd,
+            onDoubleTap: _onDoubleTap,
+            onLongPress: () {
+              AppHaptics.mediumImpact();
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                      );
-                    },
-                    child: AspectRatio(
-                      aspectRatio: widget.aspectRatio,
-                      child: CachedNetworkImage(
-                        imageUrl: widget.imageUrl,
-                        fit: BoxFit.cover,
-                        width: double.infinity,
-                        height: double.infinity,
-                        placeholder: (context, url) => Center(
-                          child: Shimmer.fromColors(
-                            baseColor: Colors.grey.withValues(alpha: 0.3),
-                            highlightColor: Colors.grey.withValues(alpha: 0.1),
-                            child: Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.download_rounded),
+                        title: const Text('Tải xuống'),
+                        onTap: _downloadImage,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+              );
+            },
+            behavior: HitTestBehavior.opaque,
+            child: SizedBox.expand(
+              child: Transform.translate(
+                offset: _isDismissing ? _dismissOffset : Offset.zero,
+                child: Transform.scale(
+                  scale: _isDismissing ? _dismissScale : 1.0,
+                  child: Center(
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..translate(_offset.dx, _offset.dy)
+                        ..scale(_scale),
+                      child: Hero(
+                        tag: widget.imageUrl,
+                        flightShuttleBuilder: (
+                          flightContext,
+                          animation,
+                          flightDirection,
+                          fromHeroContext,
+                          toHeroContext,
+                        ) {
+                          return AspectRatio(
+                            aspectRatio: widget.aspectRatio,
+                            child: CachedNetworkImage(
+                              imageUrl: widget.imageUrl,
+                              fit: BoxFit.cover,
+                              fadeInDuration: Duration.zero,
+                              fadeOutDuration: Duration.zero,
+                            ),
+                          );
+                        },
+                        child: AspectRatio(
+                          aspectRatio: widget.aspectRatio,
+                          child: CachedNetworkImage(
+                            imageUrl: widget.imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            placeholder: (context, url) => Center(
+                              child: Shimmer.fromColors(
+                                baseColor: Colors.grey.withValues(alpha: 0.3),
+                                highlightColor: Colors.grey.withValues(alpha: 0.1),
+                                child: Container(
+                                  width: 100,
+                                  height: 100,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
                               ),
                             ),
+                            errorWidget: (context, url, error) =>
+                                const Icon(Icons.error, color: Colors.white),
                           ),
                         ),
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.error, color: Colors.white),
                       ),
                     ),
                   ),
@@ -1535,7 +1799,27 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
               ),
             ),
           ),
-        ),
+          // Overlay Loading khi đang tải
+          if (_isDownloading)
+            Container(
+              color: Colors.black45,
+              child: const Center(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        const Text('Đang lưu ảnh...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
