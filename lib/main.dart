@@ -21,10 +21,12 @@ void main() async {
   final themeIndex = prefs.getInt('themeMode') ?? 0; // 0: system, 1: light, 2: dark
   final colorValue = prefs.getInt('themeColor') ?? Colors.blueAccent.value;
   final hapticsEnabled = prefs.getBool('hapticsEnabled') ?? true;
+  final gridCols = prefs.getInt('gridColumns') ?? 2;
   
   MyApp.themeNotifier.value = ThemeMode.values[themeIndex];
   MyApp.themeColorNotifier.value = Color(colorValue);
   MyApp.hapticNotifier.value = hapticsEnabled;
+  MyApp.gridColumnsNotifier.value = gridCols;
 
   runApp(const MyApp());
 }
@@ -182,6 +184,9 @@ class MyApp extends StatelessWidget {
 
   // Trình lắng nghe bật/tắt rung haptic
   static final ValueNotifier<bool> hapticNotifier = ValueNotifier(true);
+
+  // Trình lắng nghe số lượng cột lưới ảnh (1, 2, 3)
+  static final ValueNotifier<int> gridColumnsNotifier = ValueNotifier(2);
 
   @override
   Widget build(BuildContext context) {
@@ -390,19 +395,24 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
 
     return Stack(
       children: [
-        MasonryGridView.count(
-          controller: widget.scrollController,
-          physics: const ClampingScrollPhysics(),
-          padding: const EdgeInsets.all(4.0),
-          crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-          mainAxisSpacing: 4.0,
-          crossAxisSpacing: 4.0,
-          itemCount: widget.images.length,
-          itemBuilder: (context, index) {
-            final imageUrl = widget.images[index]['download_url'];
-            final aspectRatio = widget.images[index]['aspect_ratio'] as double;
-
-            return _ImageGridItem(imageUrl: imageUrl, aspectRatio: aspectRatio);
+        ValueListenableBuilder<int>(
+          valueListenable: MyApp.gridColumnsNotifier,
+          builder: (context, gridCols, _) {
+            return MasonryGridView.count(
+              controller: widget.scrollController,
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.all(4.0),
+              crossAxisCount: gridCols,
+              mainAxisSpacing: 4.0,
+              crossAxisSpacing: 4.0,
+              itemCount: widget.images.length,
+              itemBuilder: (context, index) {
+                final imageUrl = widget.images[index]['download_url'];
+                final aspectRatio = widget.images[index]['aspect_ratio'] as double;
+    
+                return _ImageGridItem(imageUrl: imageUrl, aspectRatio: aspectRatio);
+              },
+            );
           },
         ),
         Positioned(
@@ -1057,55 +1067,65 @@ class _SettingsTabState extends State<SettingsTab> {
           },
         ),
         const Divider(),
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Giao diện hiển thị',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-        ValueListenableBuilder<ThemeMode>(
-          valueListenable: MyApp.themeNotifier,
-          builder: (context, currentMode, _) {
-            return RadioGroup<ThemeMode>(
-              groupValue: currentMode,
-              onChanged: (ThemeMode? value) async {
-                if (value != null) {
-                  MyApp.themeNotifier.value = value;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('themeMode', value.index);
-                }
-              },
-              child: Column(
-                children: [
-                  const RadioListTile<ThemeMode>(
-                    title: Text('Theo hệ thống'),
-                    secondary: Icon(Icons.brightness_auto),
-                    value: ThemeMode.system,
-                  ),
-                  const RadioListTile<ThemeMode>(
-                    title: Text('Chế độ sáng'),
-                    secondary: Icon(Icons.wb_sunny_rounded),
-                    value: ThemeMode.light,
-                  ),
-                  const RadioListTile<ThemeMode>(
-                    title: Text('Chế độ tối'),
-                    secondary: Icon(Icons.nightlight_round),
-                    value: ThemeMode.dark,
-                  ),
+        ValueListenableBuilder<int>(
+          valueListenable: MyApp.gridColumnsNotifier,
+          builder: (context, gridCols, _) {
+            return ListTile(
+              title: const Text('Số lượng cột lưới ảnh'),
+              trailing: SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment<int>(value: 1, label: Text('1')),
+                  ButtonSegment<int>(value: 2, label: Text('2')),
+                  ButtonSegment<int>(value: 3, label: Text('3')),
                 ],
+                selected: {gridCols},
+                onSelectionChanged: (Set<int> newSelection) async {
+                  final newValue = newSelection.first;
+                  MyApp.gridColumnsNotifier.value = newValue;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('gridColumns', newValue);
+                  AppHaptics.selectionClick();
+                },
               ),
             );
           },
         ),
         const Divider(),
-        const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'Màu chủ đạo',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+        ValueListenableBuilder<ThemeMode>(
+          valueListenable: MyApp.themeNotifier,
+          builder: (context, currentMode, _) {
+            return ListTile(
+              title: const Text('Chế độ sáng/tối'),
+              trailing: SegmentedButton<ThemeMode>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.brightness_auto),
+                  ),
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.wb_sunny_rounded),
+                  ),
+                  ButtonSegment<ThemeMode>(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.nightlight_round),
+                  ),
+                ],
+                selected: {currentMode},
+                onSelectionChanged: (Set<ThemeMode> newSelection) async {
+                  final newValue = newSelection.first;
+                  MyApp.themeNotifier.value = newValue;
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setInt('themeMode', newValue.index);
+                  AppHaptics.selectionClick();
+                },
+              ),
+            );
+          },
         ),
+        const Divider(),
         ValueListenableBuilder<Color>(
           valueListenable: MyApp.themeColorNotifier,
           builder: (context, currentColor, _) {
