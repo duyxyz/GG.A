@@ -372,7 +372,7 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
             },
             backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
             foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-            child: const Icon(Icons.refresh),
+            child: const Icon(Icons.cloud),
           ),
         ),
       ],
@@ -709,13 +709,12 @@ class _AddTabState extends State<AddTab> {
                       padding: const EdgeInsets.all(16.0),
                       child: SizedBox(
                         width: double.infinity,
-                        child: FilledButton.icon(
+                        child: FilledButton(
                           onPressed: _uploadImage,
-                          icon: const Icon(Icons.cloud_upload),
-                          label: const Text('Đăng tất cả ảnh'),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                           ),
+                          child: const Text('Đăng tất cả ảnh'),
                         ),
                       ),
                     ),
@@ -725,17 +724,10 @@ class _AddTabState extends State<AddTab> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.add_photo_alternate_outlined, size: 80),
-                      const SizedBox(height: 32),
-                      FilledButton(
+                      IconButton(
+                        iconSize: 120, // Tăng kích thước icon thêm ảnh
                         onPressed: _pickImage,
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24,
-                            vertical: 16,
-                          ),
-                        ),
-                        child: const Text('Chọn ảnh từ thiết bị'),
+                        icon: const Icon(Icons.add_photo_alternate_outlined),
                       ),
                     ],
                   ),
@@ -830,15 +822,15 @@ class _DeleteTabState extends State<DeleteTab> {
     if (!_isAuthenticated) {
       return Center(
         child: InkWell(
-          borderRadius: BorderRadius.circular(50),
+          borderRadius: BorderRadius.circular(100),
           onTap: _authenticate,
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(48), // Tăng vùng bấm
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
-            child: const Icon(Icons.lock, size: 48),
+            child: const Icon(Icons.lock, size: 80), // Tăng kích thước icon khóa
           ),
         ),
       );
