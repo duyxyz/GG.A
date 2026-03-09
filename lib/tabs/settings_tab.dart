@@ -8,6 +8,8 @@ import '../main.dart';
 import '../services/github_service.dart';
 import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
+import '../utils/migrate_to_supabase.dart';
+import '../services/supabase_service.dart';
 
 class SettingsTab extends StatefulWidget {
   final bool isSelected;
@@ -385,6 +387,53 @@ class _SettingsTabState extends State<SettingsTab> {
                 const SnackBar(
                   content: Text('Đã xoá sạch bộ nhớ đệm!'),
                   behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+        const Divider(),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Quản trị cơ sở dữ liệu',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
+          ),
+        ),
+        ListTile(
+          title: const Text('Đồng bộ ảnh cũ'),
+          subtitle: const Text('Lấy dữ liệu từ GitHub và đẩy vào Supabase'),
+          leading: const Icon(Icons.sync_rounded),
+          onTap: () async {
+            AppHaptics.mediumImpact();
+            if (!SupabaseService.isInitialized) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Vui lòng cấu hình Supabase trước!')),
+              );
+              return;
+            }
+            
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(child: CircularProgressIndicator()),
+            );
+
+            final result = await MigrationUtility.migrateFromGitHub();
+            
+            if (context.mounted) {
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Kết quả đồng bộ'),
+                  content: Text(result),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
+                  ],
                 ),
               );
             }

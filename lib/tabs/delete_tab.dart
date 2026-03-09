@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../services/github_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/haptics.dart';
 import '../widgets/pulse_skeleton.dart';
 import '../widgets/error_view.dart';
@@ -67,7 +68,15 @@ class _DeleteTabState extends State<DeleteTab> {
       int successCount = 0;
       for (String sha in _selectedSha) {
         final img = widget.images.firstWhere((e) => e['sha'] == sha);
+        
+        // 1. Delete from GitHub
         await GithubService.deleteImage(img['path'], sha);
+        
+        // 2. Delete from Supabase
+        if (img['index'] != null) {
+          await SupabaseService.deleteImageMetadata(img['index'] as int);
+        }
+        
         successCount++;
       }
       if (mounted) {

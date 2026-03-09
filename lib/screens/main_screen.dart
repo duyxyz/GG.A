@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../main.dart';
 import '../services/github_service.dart';
+import '../services/supabase_service.dart';
+import 'dart:async';
 import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
 import '../tabs/home_tab.dart';
@@ -22,10 +24,14 @@ class _MainScreenState extends State<MainScreen> {
   bool _isLoading = true;
   String _error = "";
   final ScrollController _homeScrollController = ScrollController();
+  StreamSubscription? _metadataSubscription;
+  Timer? _debounceTimer;
 
   @override
   void dispose() {
     _homeScrollController.dispose();
+    _metadataSubscription?.cancel();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
@@ -33,7 +39,50 @@ class _MainScreenState extends State<MainScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _setupRealtimeMetadata();
     _checkForUpdateSilent();
+  }
+
+  void _setupRealtimeMetadata() {
+    _metadataSubscription = SupabaseService.metadataStream().listen((data) {
+      if (data.isNotEmpty && mounted) {
+        bool hasChanges = false;
+        
+        // 1. Cập nhật tỷ lệ ảnh cũ ngay tại chỗ nếu đã có dữ liệu GitHub
+        if (_images.isNotEmpty) {
+          final Map<int, double> newRatios = {
+            for (var item in data) 
+              item['image_index'] as int: (item['aspect_ratio'] as num).toDouble()
+          };
+
+          for (var i = 0; i < _images.length; i++) {
+            final idx = _images[i]['index'];
+            if (idx != null && newRatios.containsKey(idx)) {
+              if (_images[i]['aspect_ratio'] != newRatios[idx]) {
+                _images[i]['aspect_ratio'] = newRatios[idx];
+                hasChanges = true;
+              }
+            }
+          }
+        }
+
+        // 2. Nếu có thay đổi về tỷ lệ, cập nhật UI ngay lập tức (không đợi GitHub)
+        if (hasChanges) {
+          setState(() {});
+        }
+
+        // 3. Chỉ tải lại từ GitHub nếu số lượng ảnh thay đổi hoặc sau khi hết debounce
+        // Điều này xử lý trường hợp có ảnh mới được thêm vào hoặc bị xóa
+        _debounceTimer?.cancel();
+        _debounceTimer = Timer(const Duration(seconds: 3), () {
+          if (mounted) {
+            // Kiểm tra xem số lượng ảnh có khớp không, nếu không khớp thì load lại
+            // (Số lượng ảnh thực tế từ GitHub có thể khác với Supabase lúc đang đồng bộ)
+            _loadData(); 
+          }
+        });
+      }
+    });
   }
 
   Future<void> _checkForUpdateSilent() async {
@@ -124,6 +173,21 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
+  void _handleFullReload() {
+    AppHaptics.heavyImpact();
+    setState(() {
+      _selectedIndex = 0; // Quay về trang chủ
+      _images = []; // Xóa dữ liệu cũ để hiện loading
+    });
+    
+    // Cuộn lên đầu trang
+    if (_homeScrollController.hasClients) {
+      _homeScrollController.jumpTo(0);
+    }
+
+    _loadData();
+  }
+
   void _showRefreshDialog() {
     AppHaptics.mediumImpact();
     showDialog(
@@ -136,14 +200,14 @@ class _MainScreenState extends State<MainScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Để sau'),
+            child: const Text('Hủy'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
-              _loadData();
+              _handleFullReload();
             },
-            child: const Text('Làm mới ngay'),
+            child: const Text('Đồng ý'),
           ),
         ],
       ),

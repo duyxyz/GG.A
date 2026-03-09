@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'supabase_service.dart';
 
 class GithubService {
   static String get token {
@@ -35,21 +36,15 @@ class GithubService {
 
   static Future<List<Map<String, dynamic>>> fetchImages() async {
     Map<int, double> aspectRatios = {};
+    
+    // 1. Get metadata from Supabase
     try {
-      final jsonResponse = await http.get(
-        Uri.parse(
-          'https://raw.githubusercontent.com/duyxyz/12A1.Galary/main/images.json',
-        ),
-      );
-      if (jsonResponse.statusCode == 200) {
-        final List<dynamic> jsonData = json.decode(jsonResponse.body);
-        for (var item in jsonData) {
-          if (item is Map &&
-              item['i'] != null &&
-              item['w'] != null &&
-              item['h'] != null) {
-            aspectRatios[item['i']] = item['w'] / item['h'];
-          }
+      final metadata = await SupabaseService.fetchImageMetadata();
+      for (var item in metadata) {
+        final idx = item['image_index'];
+        final ratio = item['aspect_ratio'];
+        if (idx != null && ratio != null) {
+          aspectRatios[idx as int] = (ratio as num).toDouble();
         }
       }
     } catch (_) {}
@@ -71,7 +66,7 @@ class GithubService {
             'sha': file['sha'],
             'download_url': file['download_url'],
             'index': index,
-            'aspect_ratio': aspectRatios[index] ?? 1.0,
+            'aspect_ratio': (aspectRatios[index] ?? 1.0).toDouble(),
           });
         }
       }

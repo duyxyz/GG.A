@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/main_screen.dart';
+import 'services/supabase_service.dart';
 import 'widgets/auth_wrapper.dart';
 import 'utils/scroll_behavior.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SupabaseService.initialize();
   
   final prefs = await SharedPreferences.getInstance();
   

@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:image/image.dart' as img;
 import '../services/github_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/haptics.dart';
 import '../widgets/error_view.dart';
 import '../widgets/pulse_skeleton.dart';
@@ -119,6 +121,20 @@ class _AddTabState extends State<AddTab> {
 
         final filename = '$nextIndex.webp';
         await GithubService.uploadImage(filename, compressedBytes);
+
+        // Calculate metadata and store in Supabase
+        try {
+          final decodedImage = img.decodeImage(compressedBytes);
+          if (decodedImage != null) {
+            await SupabaseService.upsertImageMetadata(
+              nextIndex,
+              decodedImage.width,
+              decodedImage.height,
+            );
+          }
+        } catch (e) {
+          debugPrint('Lỗi lưu Supabase: $e');
+        }
 
         currentImages.add({'index': nextIndex});
       }
