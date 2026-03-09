@@ -21,6 +21,8 @@ class SettingsTab extends StatefulWidget {
 
 class _SettingsTabState extends State<SettingsTab> {
   String _cacheSize = 'Đang tính...';
+  int _syncTapCount = 0;
+  DateTime? _lastTapTime;
 
   @override
   void initState() {
@@ -401,11 +403,54 @@ class _SettingsTabState extends State<SettingsTab> {
           ),
         ),
         ListTile(
-          title: const Text('Đồng bộ ảnh cũ'),
+          title: const Text('Đồng bộ kích thước'),
           subtitle: const Text('Lấy dữ liệu từ GitHub và đẩy vào Supabase'),
           leading: const Icon(Icons.sync_rounded),
           onTap: () async {
+            AppHaptics.lightImpact();
+            
+            final now = DateTime.now();
+            if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
+              _syncTapCount = 1;
+            } else {
+              _syncTapCount++;
+            }
+            _lastTapTime = now;
+
+            if (_syncTapCount < 5) {
+              return;
+            }
+
+            // Reset after success trigger
+            _syncTapCount = 0;
             AppHaptics.mediumImpact();
+            
+            final bool? confirmSync = await showDialog<bool>(
+              context: context,
+              barrierDismissible: false,
+              builder: (ctx) => PopScope(
+                canPop: false,
+                child: AlertDialog(
+                  title: const Text('Xác nhận đồng bộ ?'),
+                  content: const Text(
+                    'Bạn có muốn bắt đầu quá trình đồng bộ kích thước từ GitHub sang Supabase không?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Hủy'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Đồng ý'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+
+            if (confirmSync != true) return;
+
             if (!SupabaseService.isInitialized) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Vui lòng cấu hình Supabase trước!')),
@@ -413,29 +458,38 @@ class _SettingsTabState extends State<SettingsTab> {
               return;
             }
             
-            showDialog(
-              context: context,
-              barrierDismissible: false,
-              builder: (context) => const Center(child: CircularProgressIndicator()),
-            );
-
-            final result = await MigrationUtility.migrateFromGitHub();
-            
             if (context.mounted) {
-              Navigator.pop(context);
               showDialog(
                 context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Kết quả đồng bộ'),
-                  content: Text(result),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Đóng'),
-                    ),
-                  ],
+                barrierDismissible: false,
+                builder: (context) => const PopScope(
+                  canPop: false,
+                  child: Center(child: CircularProgressIndicator()),
                 ),
               );
+
+              final result = await MigrationUtility.migrateFromGitHub();
+              
+              if (context.mounted) {
+                Navigator.pop(context); // Đóng Loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => PopScope(
+                    canPop: false,
+                    child: AlertDialog(
+                      title: const Text('Kết quả đồng bộ'),
+                      content: Text(result),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Đóng'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
             }
           },
         ),
