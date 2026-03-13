@@ -16,12 +16,14 @@ void main() async {
   final hapticsEnabled = prefs.getBool('hapticsEnabled') ?? true;
   final lockEnabled = prefs.getBool('lockEnabled') ?? false;
   final gridCols = prefs.getInt('gridColumns') ?? 2;
+  final platformIndex = prefs.getInt('targetPlatform') ?? -1;
   
   MyApp.themeNotifier.value = ThemeMode.values[themeIndex];
   MyApp.themeColorNotifier.value = Color(colorValue);
   MyApp.hapticNotifier.value = hapticsEnabled;
   MyApp.lockNotifier.value = lockEnabled;
   MyApp.gridColumnsNotifier.value = gridCols;
+  MyApp.platformNotifier.value = platformIndex == -1 ? null : TargetPlatform.values[platformIndex];
 
   runApp(const MyApp());
 }
@@ -43,6 +45,8 @@ class MyApp extends StatelessWidget {
 
   static final ValueNotifier<int> gridColumnsNotifier = ValueNotifier(2);
 
+  static final ValueNotifier<TargetPlatform?> platformNotifier = ValueNotifier(null);
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
@@ -51,24 +55,30 @@ class MyApp extends StatelessWidget {
         return ValueListenableBuilder<Color>(
           valueListenable: themeColorNotifier,
           builder: (context, currentColor, _) {
-            return MaterialApp(
-              title: '12A1 THPT Đơn Dương',
-              scrollBehavior: NoStretchScrollBehavior(),
-              theme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(seedColor: currentColor),
-                useMaterial3: true,
-              ),
-              darkTheme: ThemeData(
-                colorScheme: ColorScheme.fromSeed(
-                  seedColor: currentColor,
-                  brightness: Brightness.dark,
-                ),
-                useMaterial3: true,
-              ),
-              themeMode: currentMode,
-              themeAnimationDuration: const Duration(milliseconds: 500),
-              themeAnimationCurve: Curves.easeInOut,
-              home: const AuthWrapper(child: MainScreen()),
+            return ValueListenableBuilder<TargetPlatform?>(
+              valueListenable: platformNotifier,
+              builder: (context, currentPlatform, _) {
+                return MaterialApp(
+                  title: '12A1 THPT Đơn Dương',
+                  scrollBehavior: NoStretchScrollBehavior(),
+                  platform: currentPlatform, // Direct platform override
+                  theme: ThemeData(
+                    colorScheme: ColorScheme.fromSeed(seedColor: currentColor),
+                    useMaterial3: true,
+                  ),
+                  darkTheme: ThemeData(
+                    colorScheme: ColorScheme.fromSeed(
+                      seedColor: currentColor,
+                      brightness: Brightness.dark,
+                    ),
+                    useMaterial3: true,
+                  ),
+                  themeMode: currentMode,
+                  themeAnimationDuration: const Duration(milliseconds: 500),
+                  themeAnimationCurve: Curves.easeInOut,
+                  home: const AuthWrapper(child: MainScreen()),
+                );
+              },
             );
           },
         );

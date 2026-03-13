@@ -536,7 +536,7 @@ class _SettingsTabState extends State<SettingsTab> {
                           angle: hue * (pi / 180),
                           child: Stack(
                             children: [
-                              Position Pointer(angle: 0), // Just to show logic
+                              // logic marker
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: Container(
