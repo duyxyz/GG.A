@@ -49,7 +49,10 @@ class _SettingsTabState extends State<SettingsTab> {
       for (final dir in dirs) {
         if (dir.existsSync()) {
           try {
-            await for (final file in dir.list(recursive: true, followLinks: false)) {
+            await for (final file in dir.list(
+              recursive: true,
+              followLinks: false,
+            )) {
               if (file is File) {
                 try {
                   totalSize += await file.length();
@@ -59,7 +62,7 @@ class _SettingsTabState extends State<SettingsTab> {
           } catch (_) {}
         }
       }
-      
+
       if (mounted) {
         setState(() {
           _cacheSize = '${(totalSize / (1024 * 1024)).toStringAsFixed(1)} MB';
@@ -74,7 +77,10 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
-  Future<void> _manualUpdateCheck(BuildContext context, String currentVersion) async {
+  Future<void> _manualUpdateCheck(
+    BuildContext context,
+    String currentVersion,
+  ) async {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Đang kiểm tra bản cập nhật mới...'),
@@ -83,7 +89,7 @@ class _SettingsTabState extends State<SettingsTab> {
     );
 
     final result = await GithubService.checkUpdate();
-    
+
     if (!result['success']) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -94,7 +100,7 @@ class _SettingsTabState extends State<SettingsTab> {
 
     final updateData = result['data'];
     final latestVersion = updateData['tag_name'].toString().replaceAll('v', '');
-    
+
     if (!mounted) return;
 
     if (latestVersion != currentVersion) {
@@ -106,7 +112,10 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
-  void _showUpdateDialog(BuildContext context, Map<String, dynamic> updateData) {
+  void _showUpdateDialog(
+    BuildContext context,
+    Map<String, dynamic> updateData,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -156,13 +165,18 @@ class _SettingsTabState extends State<SettingsTab> {
                   ),
                   trailing: Text(
                     '$remaining/5000',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
                 FutureBuilder<PackageInfo>(
                   future: PackageInfo.fromPlatform(),
                   builder: (context, snapshot) {
-                    final version = snapshot.hasData ? snapshot.data!.version : '...';
+                    final version = snapshot.hasData
+                        ? snapshot.data!.version
+                        : '...';
                     return ListTile(
                       title: const Text('Phiên bản hiện tại'),
                       subtitle: const Text('Nhấn để kiểm tra cập nhật'),
@@ -285,12 +299,30 @@ class _SettingsTabState extends State<SettingsTab> {
           valueListenable: MyApp.themeColorNotifier,
           builder: (context, currentColor, _) {
             final List<Color> extendedColors = [
-              Colors.red, Colors.redAccent, Colors.pink, Colors.pinkAccent,
-              Colors.purple, Colors.deepPurple, Colors.indigo, Colors.blue,
-              Colors.lightBlue, Colors.cyan, Colors.teal, Colors.green,
-              Colors.lightGreen, Colors.lime, Colors.yellow, Colors.amber,
-              Colors.orange, Colors.deepOrange, Colors.brown, Colors.grey,
-              Colors.blueGrey, const Color(0xFF1E88E5), const Color(0xFF00897B), const Color(0xFFD81B60),
+              Colors.red,
+              Colors.redAccent,
+              Colors.pink,
+              Colors.pinkAccent,
+              Colors.purple,
+              Colors.deepPurple,
+              Colors.indigo,
+              Colors.blue,
+              Colors.lightBlue,
+              Colors.cyan,
+              Colors.teal,
+              Colors.green,
+              Colors.lightGreen,
+              Colors.lime,
+              Colors.yellow,
+              Colors.amber,
+              Colors.orange,
+              Colors.deepOrange,
+              Colors.brown,
+              Colors.grey,
+              Colors.blueGrey,
+              const Color(0xFF1E88E5),
+              const Color(0xFF00897B),
+              const Color(0xFFD81B60),
             ];
 
             return ListTile(
@@ -301,10 +333,7 @@ class _SettingsTabState extends State<SettingsTab> {
                 elevation: 0,
                 clipBehavior: Clip.antiAlias,
                 shape: const CircleBorder(),
-                child: const SizedBox(
-                  width: 36,
-                  height: 36,
-                ),
+                child: const SizedBox(width: 36, height: 36),
               ),
               onTap: () {
                 AppHaptics.selectionClick();
@@ -318,20 +347,23 @@ class _SettingsTabState extends State<SettingsTab> {
                         child: GridView.builder(
                           shrinkWrap: true,
                           physics: const ClampingScrollPhysics(),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 6,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 12,
-                          ),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 6,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 12,
+                              ),
                           itemCount: extendedColors.length,
                           itemBuilder: (context, index) {
                             final color = extendedColors[index];
-                            final isSelected = currentColor.value == color.value;
+                            final isSelected =
+                                currentColor.value == color.value;
                             return GestureDetector(
                               onTap: () async {
                                 AppHaptics.selectionClick();
                                 MyApp.themeColorNotifier.value = color;
-                                final prefs = await SharedPreferences.getInstance();
+                                final prefs =
+                                    await SharedPreferences.getInstance();
                                 await prefs.setInt('themeColor', color.value);
                                 if (context.mounted) Navigator.pop(context);
                               },
@@ -339,9 +371,22 @@ class _SettingsTabState extends State<SettingsTab> {
                                 decoration: BoxDecoration(
                                   color: color,
                                   shape: BoxShape.circle,
-                                  border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null,
+                                  border: isSelected
+                                      ? Border.all(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                          width: 3,
+                                        )
+                                      : null,
                                 ),
-                                child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                                child: isSelected
+                                    ? const Icon(
+                                        Icons.check,
+                                        color: Colors.white,
+                                        size: 20,
+                                      )
+                                    : null,
                               ),
                             );
                           },
@@ -369,7 +414,10 @@ class _SettingsTabState extends State<SettingsTab> {
               ];
               for (final dir in dirs) {
                 if (dir.existsSync()) {
-                  final entities = dir.listSync(recursive: true, followLinks: false);
+                  final entities = dir.listSync(
+                    recursive: true,
+                    followLinks: false,
+                  );
                   for (final entity in entities) {
                     if (entity is File) {
                       try {
@@ -382,8 +430,8 @@ class _SettingsTabState extends State<SettingsTab> {
             } catch (_) {}
 
             await Future.delayed(const Duration(milliseconds: 400));
-            await _calculateCacheSize(); 
-            
+            await _calculateCacheSize();
+
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -398,13 +446,15 @@ class _SettingsTabState extends State<SettingsTab> {
 
         ListTile(
           title: const Text('Đồng bộ kích thước'),
-          subtitle: const Text('Lấy dữ liệu từ GitHub và đẩy vào Supabase'),
+          subtitle: const Text('Lưu Kích Thước Ảnh'),
           leading: const Icon(Icons.sync_rounded),
           onTap: () async {
             AppHaptics.lightImpact();
-            
+
             final now = DateTime.now();
-            if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
+            if (_lastTapTime == null ||
+                now.difference(_lastTapTime!) >
+                    const Duration(milliseconds: 500)) {
               _syncTapCount = 1;
             } else {
               _syncTapCount++;
@@ -418,7 +468,7 @@ class _SettingsTabState extends State<SettingsTab> {
             // Reset after success trigger
             _syncTapCount = 0;
             AppHaptics.mediumImpact();
-            
+
             final bool? confirmSync = await showDialog<bool>(
               context: context,
               barrierDismissible: false,
@@ -447,11 +497,13 @@ class _SettingsTabState extends State<SettingsTab> {
 
             if (!SupabaseService.isInitialized) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Vui lòng cấu hình Supabase trước!')),
+                const SnackBar(
+                  content: Text('Vui lòng cấu hình Supabase trước!'),
+                ),
               );
               return;
             }
-            
+
             if (context.mounted) {
               showDialog(
                 context: context,
@@ -463,7 +515,7 @@ class _SettingsTabState extends State<SettingsTab> {
               );
 
               final result = await MigrationUtility.migrateFromGitHub();
-              
+
               if (context.mounted) {
                 Navigator.pop(context); // Đóng Loading
                 showDialog(

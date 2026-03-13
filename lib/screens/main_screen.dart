@@ -272,7 +272,7 @@ class _MainScreenState extends State<MainScreen> {
             filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10), // YouTube-style subtle blur
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7), // Nền tối hơn chuẩn YouTube
+                color: Colors.black.withOpacity(0.4), // Giảm xuống 0.4 để thấy hiệu ứng xuyên thấu
                 border: Border(
                   top: BorderSide(
                     color: Colors.white.withOpacity(0.1), // Đường kẻ mảnh phía trên

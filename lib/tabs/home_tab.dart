@@ -49,7 +49,12 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
             return MasonryGridView.count(
               controller: widget.scrollController,
               physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.all(4.0),
+              padding: const EdgeInsets.only(
+                left: 4.0,
+                right: 4.0,
+                top: 4.0,
+                bottom: 80.0, // Thêm đệm dưới để ảnh chui xuống dưới thanh điều hướng
+              ),
               crossAxisCount: gridCols,
               mainAxisSpacing: 4.0,
               crossAxisSpacing: 4.0,
