@@ -37,14 +37,16 @@ class _DeleteTabState extends State<DeleteTab> {
 
   Future<void> _deleteSelected() async {
     if (_selectedSha.isEmpty) return;
-    
+
     AppHaptics.lightImpact();
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Xác nhận Xóa Ảnh'),
-          content: Text('Bạn có chắc chắn muốn xóa vĩnh viễn ${_selectedSha.length} bức ảnh đã chọn khỏi Bộ Sưu Tập không? Hành động này không thể hoàn tác.'),
+          content: Text(
+            'Bạn có chắc chắn muốn xóa vĩnh viễn ${_selectedSha.length} bức ảnh đã chọn khỏi Bộ Sưu Tập không? Hành động này không thể hoàn tác.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -59,7 +61,7 @@ class _DeleteTabState extends State<DeleteTab> {
         );
       },
     );
-    
+
     if (confirm != true) return;
 
     setState(() => _isDeleting = true);
@@ -68,15 +70,15 @@ class _DeleteTabState extends State<DeleteTab> {
       int successCount = 0;
       for (String sha in _selectedSha) {
         final img = widget.images.firstWhere((e) => e['sha'] == sha);
-        
+
         // 1. Delete from GitHub
         await GithubService.deleteImage(img['path'], sha);
-        
+
         // 2. Delete from Supabase
         if (img['index'] != null) {
           await SupabaseService.deleteImageMetadata(img['index'] as int);
         }
-        
+
         successCount++;
       }
       if (mounted) {
@@ -115,12 +117,12 @@ class _DeleteTabState extends State<DeleteTab> {
           borderRadius: BorderRadius.circular(100),
           onTap: _authenticate,
           child: Container(
-            padding: const EdgeInsets.all(48), 
+            padding: const EdgeInsets.all(48),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
             ),
-            child: const Icon(Icons.lock, size: 80), 
+            child: const Icon(Icons.lock, size: 80),
           ),
         ),
       );
@@ -133,7 +135,10 @@ class _DeleteTabState extends State<DeleteTab> {
           children: [
             const PulseSkeleton(width: 80, height: 80),
             const SizedBox(height: 16),
-            const Text("Đang xóa ảnh...", style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              "Đang xóa ảnh...",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
           ],
         ),
       );
@@ -141,8 +146,7 @@ class _DeleteTabState extends State<DeleteTab> {
 
     return Column(
       children: [
-        if (widget.isLoading)
-          const LinearProgressIndicator(),
+        if (widget.isLoading) const LinearProgressIndicator(),
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
@@ -183,13 +187,17 @@ class _DeleteTabState extends State<DeleteTab> {
                       child: CachedNetworkImage(
                         imageUrl: img['download_url'],
                         fit: BoxFit.cover,
-                        memCacheWidth: (MediaQuery.of(context).size.width * 0.4).round(),
+                        memCacheWidth: (MediaQuery.of(context).size.width * 0.4)
+                            .round(),
                         placeholder: (context, url) => const PulseSkeleton(
                           borderRadius: BorderRadius.all(Radius.circular(8)),
                         ),
                         errorWidget: (context, url, error) => Container(
                           color: Theme.of(context).colorScheme.errorContainer,
-                          child: const Icon(Icons.image_not_supported_rounded, size: 24),
+                          child: const Icon(
+                            Icons.image_not_supported_rounded,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
@@ -233,7 +241,7 @@ class _DeleteTabState extends State<DeleteTab> {
               Expanded(
                 child: FilledButton(
                   onPressed: _selectedSha.isEmpty ? null : _deleteSelected,
-                  child: const Text('Xóa mục đã chọn'),
+                  child: const Text('Xóa'),
                 ),
               ),
             ],
