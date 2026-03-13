@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
@@ -166,7 +167,7 @@ class _SettingsTabState extends State<SettingsTab> {
                     icon: Icons.api_rounded,
                     content: ValueListenableBuilder<String>(
                       valueListenable: GithubService.apiRemaining,
-                      builder: (context, remaining, _) => Text('$remaining/5k', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      builder: (context, remaining, _) => Text(remaining, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                   ),
                 ),
@@ -475,53 +476,104 @@ class _SettingsTabState extends State<SettingsTab> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) {
-          final currentColor = HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor();
           return AlertDialog(
             title: const Text('Chọn màu chủ đạo'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Tích vào vùng màu bạn thích', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                const SizedBox(height: 16),
-                // Color Area (Map)
+                const Text('Chạm vào vòng tròn để chọn tông màu', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 20),
+                // --- Simple Color Wheel ---
                 SizedBox(
+                  width: 200,
                   height: 200,
-                  width: double.maxFinite,
-                  child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8, crossAxisSpacing: 4, mainAxisSpacing: 4),
-                    itemCount: 64, // 8x8 grid of various hues
-                    itemBuilder: (context, index) {
-                      final itemHue = (index / 64) * 360;
-                      final itemColor = HSVColor.fromAHSV(1.0, itemHue, 0.7, 0.9).toColor();
-                      final isSelected = (hue - itemHue).abs() < (360 / 128);
-                      return GestureDetector(
-                        onTap: () => setDialogState(() => hue = itemHue),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: itemColor,
-                            borderRadius: BorderRadius.circular(6),
-                            border: isSelected ? Border.all(color: Colors.white, width: 2) : null,
-                            boxShadow: isSelected ? [BoxShadow(color: itemColor.withValues(alpha: 0.5), blurRadius: 8)] : null,
-                          ),
-                          child: isSelected ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // The Wheel (Simplified using a set of segments)
+                      Transform.rotate(
+                        angle: -90 * (pi / 180),
+                        child: CustomPaint(
+                          size: const Size(200, 200),
+                          painter: ColorWheelPainter(),
                         ),
-                      );
-                    },
+                      ),
+                      // Gesture Overlay
+                      GestureDetector(
+                        onPanUpdate: (details) {
+                          final RenderBox box = context.findRenderObject() as RenderBox;
+                          final Offset localOffset = details.localPosition;
+                          final double centerX = 100;
+                          final double centerY = 100;
+                          final double dx = localOffset.dx - centerX;
+                          final double dy = localOffset.dy - centerY;
+                          double angle = atan2(dy, dx) * (180 / pi);
+                          if (angle < 0) angle += 360;
+                          setDialogState(() => hue = angle);
+                        },
+                        onTapDown: (details) {
+                          final Offset localOffset = details.localPosition;
+                          final double centerX = 100;
+                          final double centerY = 100;
+                          final double dx = localOffset.dx - centerX;
+                          final double dy = localOffset.dy - centerY;
+                          double angle = atan2(dy, dx) * (180 / pi);
+                          if (angle < 0) angle += 360;
+                          setDialogState(() => hue = angle);
+                        },
+                        child: Container(
+                          width: 200,
+                          height: 200,
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                      // Selector Indicator
+                      IgnorePointer(
+                        child: Transform.rotate(
+                          angle: hue * (pi / 180),
+                          child: Stack(
+                            children: [
+                              Position Pointer(angle: 0), // Just to show logic
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: Container(
+                                  margin: const EdgeInsets.only(right: 5),
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    border: Border.all(color: Colors.black26, width: 2),
+                                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Center Preview
+                      Container(
+                        width: 60,
+                        height: 60,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor(),
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Detailed Adjust Slider
-                Row(
-                  children: [
-                    const Text('Tinh chỉnh', style: TextStyle(fontSize: 12)),
-                    Expanded(
-                      child: Slider(
-                        value: hue,
-                        max: 360,
-                        onChanged: (v) => setDialogState(() => hue = v),
-                      ),
-                    ),
-                  ],
+                // Current selection hint
+                Text(
+                  'Màu đang chọn: #${HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor().value.toRadixString(16).substring(2).toUpperCase()}',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -536,7 +588,7 @@ class _SettingsTabState extends State<SettingsTab> {
                   if (context.mounted) Navigator.pop(context);
                   AppHaptics.mediumImpact();
                 },
-                child: const Text('Chọn màu này'),
+                child: const Text('Lưu màu'),
               ),
             ],
           );
@@ -544,4 +596,33 @@ class _SettingsTabState extends State<SettingsTab> {
       ),
     );
   }
+}
+
+// Custom Painter for the Color Wheel
+class ColorWheelPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    const segments = 360;
+    final sweepAngle = (2 * pi) / segments;
+
+    for (int i = 0; i < segments; i++) {
+      final paint = Paint()
+        ..color = HSVColor.fromAHSV(1.0, i.toDouble(), 0.8, 0.9).toColor()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 30; // Thickness of the wheel ring
+      
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - 15),
+        i * (pi / 180),
+        sweepAngle + 0.01, // Overlap slightly to prevent gaps
+        false,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
