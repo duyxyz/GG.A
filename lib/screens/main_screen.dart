@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' as ui;
 import 'package:package_info_plus/package_info_plus.dart';
 import '../main.dart';
 import '../services/github_service.dart';
@@ -273,7 +274,7 @@ class _MainScreenState extends State<MainScreen> {
               BlendMode.darken,
             ),
             child: BackdropFilter(
-              filter: java.ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+              filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
               child: Container(
                 color: Colors.black.withOpacity(0.5),
                 child: Stack(
