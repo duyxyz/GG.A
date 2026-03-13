@@ -167,7 +167,13 @@ class _SettingsTabState extends State<SettingsTab> {
                     icon: Icons.api_rounded,
                     content: ValueListenableBuilder<String>(
                       valueListenable: GithubService.apiRemaining,
-                      builder: (context, remaining, _) => Text(remaining, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      builder: (context, remaining, _) => Text(
+                        remaining,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -179,11 +185,18 @@ class _SettingsTabState extends State<SettingsTab> {
                     icon: Icons.info_outline_rounded,
                     onTap: () async {
                       final info = await PackageInfo.fromPlatform();
-                      if (context.mounted) _manualUpdateCheck(context, info.version);
+                      if (context.mounted)
+                        _manualUpdateCheck(context, info.version);
                     },
                     content: FutureBuilder<PackageInfo>(
                       future: PackageInfo.fromPlatform(),
-                      builder: (context, snapshot) => Text('v${snapshot.data?.version ?? "..."}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      builder: (context, snapshot) => Text(
+                        'v${snapshot.data?.version ?? "..."}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -196,18 +209,30 @@ class _SettingsTabState extends State<SettingsTab> {
                     onTap: () async {
                       AppHaptics.mediumImpact();
                       await DefaultCacheManager().emptyCache();
-                      final dirs = [await getTemporaryDirectory(), await getApplicationSupportDirectory()];
+                      final dirs = [
+                        await getTemporaryDirectory(),
+                        await getApplicationSupportDirectory(),
+                      ];
                       for (final dir in dirs) {
                         if (dir.existsSync()) {
                           for (final entity in dir.listSync(recursive: true)) {
-                            if (entity is File) try { await entity.delete(); } catch (_) {}
+                            if (entity is File)
+                              try {
+                                await entity.delete();
+                              } catch (_) {}
                           }
                         }
                       }
                       await Future.delayed(const Duration(milliseconds: 400));
                       await _calculateCacheSize();
                     },
-                    content: Text(_cacheSize, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                    content: Text(
+                      _cacheSize,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -222,7 +247,9 @@ class _SettingsTabState extends State<SettingsTab> {
                   child: _buildSystemCard(
                     context,
                     title: 'Rung',
-                    icon: MyApp.hapticNotifier.value ? Icons.vibration : Icons.vibration_outlined,
+                    icon: MyApp.hapticNotifier.value
+                        ? Icons.vibration
+                        : Icons.vibration_outlined,
                     enabled: MyApp.hapticNotifier,
                     onChanged: (v) async {
                       MyApp.hapticNotifier.value = v;
@@ -237,7 +264,9 @@ class _SettingsTabState extends State<SettingsTab> {
                   child: _buildSystemCard(
                     context,
                     title: 'Khóa',
-                    icon: MyApp.lockNotifier.value ? Icons.lock : Icons.lock_outline,
+                    icon: MyApp.lockNotifier.value
+                        ? Icons.lock
+                        : Icons.lock_outline,
                     enabled: MyApp.lockNotifier,
                     onChanged: (v) async {
                       MyApp.lockNotifier.value = v;
@@ -268,7 +297,10 @@ class _SettingsTabState extends State<SettingsTab> {
                       children: [
                         const Icon(Icons.palette_outlined, size: 24),
                         const SizedBox(width: 12),
-                        const Text('Màu sắc chủ đạo', style: TextStyle(fontWeight: FontWeight.w500)),
+                        const Text(
+                          'Màu sắc chủ đạo',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
                         const Spacer(),
                         Container(
                           width: 40,
@@ -279,7 +311,10 @@ class _SettingsTabState extends State<SettingsTab> {
                             border: Border.all(color: Colors.white24),
                           ),
                         ),
-                        const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.grey,
+                        ),
                       ],
                     ),
                   ),
@@ -301,8 +336,14 @@ class _SettingsTabState extends State<SettingsTab> {
                     icon: Icons.brightness_6_rounded,
                     value: MyApp.themeNotifier,
                     items: const [
-                      PopupMenuItem(value: ThemeMode.system, child: Text('Tự động')),
-                      PopupMenuItem(value: ThemeMode.light, child: Text('Sáng')),
+                      PopupMenuItem(
+                        value: ThemeMode.system,
+                        child: Text('Tự động'),
+                      ),
+                      PopupMenuItem(
+                        value: ThemeMode.light,
+                        child: Text('Sáng'),
+                      ),
                       PopupMenuItem(value: ThemeMode.dark, child: Text('Tối')),
                     ],
                     onChanged: (mode) async {
@@ -311,7 +352,9 @@ class _SettingsTabState extends State<SettingsTab> {
                       await prefs.setInt('themeMode', mode.index);
                       AppHaptics.selectionClick();
                     },
-                    displayLabel: (mode) => mode == ThemeMode.system ? 'Tự động' : (mode == ThemeMode.light ? 'Sáng' : 'Tối'),
+                    displayLabel: (mode) => mode == ThemeMode.system
+                        ? 'Tự động'
+                        : (mode == ThemeMode.light ? 'Sáng' : 'Tối'),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
                   _buildDropdownTile<int>(
@@ -320,9 +363,9 @@ class _SettingsTabState extends State<SettingsTab> {
                     icon: Icons.grid_view_rounded,
                     value: MyApp.gridColumnsNotifier,
                     items: const [
-                       PopupMenuItem(value: 1, child: Text('1 Cột')),
-                       PopupMenuItem(value: 2, child: Text('2 Cột')),
-                       PopupMenuItem(value: 3, child: Text('3 Cột')),
+                      PopupMenuItem(value: 1, child: Text('1 Cột')),
+                      PopupMenuItem(value: 2, child: Text('2 Cột')),
+                      PopupMenuItem(value: 3, child: Text('3 Cột')),
                     ],
                     onChanged: (cols) async {
                       MyApp.gridColumnsNotifier.value = cols;
@@ -333,14 +376,58 @@ class _SettingsTabState extends State<SettingsTab> {
                     displayLabel: (cols) => '$cols Cột',
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
+                  _buildDropdownTile<TargetPlatform?>(
+                    context,
+                    title: 'Giao diện hệ thống',
+                    icon: Icons.phone_android_rounded,
+                    value: MyApp.platformNotifier,
+                    items: const [
+                      PopupMenuItem(value: null, child: Text('Mặc định')),
+                      PopupMenuItem(
+                        value: TargetPlatform.android,
+                        child: Text('Android'),
+                      ),
+                      PopupMenuItem(
+                        value: TargetPlatform.iOS,
+                        child: Text('iOS'),
+                      ),
+                    ],
+                    onChanged: (val) async {
+                      MyApp.platformNotifier.value = val;
+                      final prefs = await SharedPreferences.getInstance();
+                      if (val == null) {
+                        await prefs.remove('targetPlatform');
+                      } else {
+                        await prefs.setInt(
+                          'targetPlatform',
+                          TargetPlatform.values.indexOf(val),
+                        );
+                      }
+                      AppHaptics.selectionClick();
+                    },
+                    displayLabel: (val) {
+                      if (val == null) return 'Mặc định';
+                      return val == TargetPlatform.iOS ? 'iOS' : 'Android';
+                    },
+                  ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
                   ListTile(
-                    title: const Text('Đồng bộ kích thước', style: TextStyle(fontSize: 14)),
+                    title: const Text(
+                      'Đồng bộ kích thước',
+                      style: TextStyle(fontSize: 14),
+                    ),
                     leading: const Icon(Icons.sync_rounded),
-                    trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey, size: 20),
+                    trailing: const Icon(
+                      Icons.chevron_right_rounded,
+                      color: Colors.grey,
+                      size: 20,
+                    ),
                     onTap: () async {
                       AppHaptics.lightImpact();
                       final now = DateTime.now();
-                      if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
+                      if (_lastTapTime == null ||
+                          now.difference(_lastTapTime!) >
+                              const Duration(milliseconds: 500)) {
                         _syncTapCount = 1;
                       } else {
                         _syncTapCount++;
@@ -353,19 +440,44 @@ class _SettingsTabState extends State<SettingsTab> {
                         context: context,
                         builder: (ctx) => AlertDialog(
                           title: const Text('Xác nhận đồng bộ?'),
-                          content: const Text('Bắt đầu đồng bộ kích thước từ GitHub sang Supabase?'),
+                          content: const Text(
+                            'Bắt đầu đồng bộ kích thước từ GitHub sang Supabase?',
+                          ),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
-                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Đồng ý')),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Hủy'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Đồng ý'),
+                            ),
                           ],
                         ),
                       );
                       if (confirmSync != true) return;
                       if (!SupabaseService.isInitialized) return;
-                      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) =>
+                            const Center(child: CircularProgressIndicator()),
+                      );
                       final result = await MigrationUtility.migrateFromGitHub();
                       Navigator.pop(context);
-                      showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Kết quả đồng bộ'), content: Text(result), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))]));
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Kết quả đồng bộ'),
+                          content: Text(result),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Đóng'),
+                            ),
+                          ],
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -379,7 +491,13 @@ class _SettingsTabState extends State<SettingsTab> {
 
   // --- Helper Widgets ---
 
-  Widget _buildInfoCard(BuildContext context, {required String title, required IconData icon, required Widget content, VoidCallback? onTap}) {
+  Widget _buildInfoCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required Widget content,
+    VoidCallback? onTap,
+  }) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -391,9 +509,18 @@ class _SettingsTabState extends State<SettingsTab> {
           padding: const EdgeInsets.all(10.0),
           child: Column(
             children: [
-              Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.8)),
+              Icon(
+                icon,
+                size: 20,
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.8),
+              ),
               const SizedBox(height: 6),
-              Text(title, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text(
+                title,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
               const SizedBox(height: 2),
               content,
             ],
@@ -403,7 +530,13 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
-  Widget _buildSystemCard(BuildContext context, {required String title, required IconData icon, required ValueNotifier<bool> enabled, required Function(bool) onChanged}) {
+  Widget _buildSystemCard(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required ValueNotifier<bool> enabled,
+    required Function(bool) onChanged,
+  }) {
     return Card(
       elevation: 0,
       margin: EdgeInsets.zero,
@@ -414,9 +547,21 @@ class _SettingsTabState extends State<SettingsTab> {
           padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8),
           child: Row(
             children: [
-              Icon(icon, size: 20, color: val ? Theme.of(context).colorScheme.primary : null),
+              Icon(
+                icon,
+                size: 20,
+                color: val ? Theme.of(context).colorScheme.primary : null,
+              ),
               const SizedBox(width: 8),
-              Expanded(child: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
               Switch(
                 value: val,
                 onChanged: onChanged,
@@ -429,7 +574,15 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
-  Widget _buildDropdownTile<T>(BuildContext context, {required String title, required IconData icon, required ValueNotifier<T> value, required List<PopupMenuItem<T>> items, required Function(T) onChanged, required String Function(T) displayLabel}) {
+  Widget _buildDropdownTile<T>(
+    BuildContext context, {
+    required String title,
+    required IconData icon,
+    required ValueNotifier<T> value,
+    required List<PopupMenuItem<T>> items,
+    required Function(T) onChanged,
+    required String Function(T) displayLabel,
+  }) {
     return ValueListenableBuilder<T>(
       valueListenable: value,
       builder: (context, current, _) => ListTile(
@@ -444,7 +597,13 @@ class _SettingsTabState extends State<SettingsTab> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(displayLabel(current), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              Text(
+                displayLabel(current),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const SizedBox(width: 4),
               const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
             ],
@@ -452,16 +611,25 @@ class _SettingsTabState extends State<SettingsTab> {
         ),
         onTap: () {
           final RenderBox button = context.findRenderObject() as RenderBox;
-          final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+          final RenderBox overlay =
+              Overlay.of(context).context.findRenderObject() as RenderBox;
           final RelativeRect position = RelativeRect.fromRect(
             Rect.fromPoints(
-              button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
-              button.localToGlobal(button.size.bottomRight(Offset.zero), ancestor: overlay),
+              button.localToGlobal(
+                button.size.bottomRight(Offset.zero),
+                ancestor: overlay,
+              ),
+              button.localToGlobal(
+                button.size.bottomRight(Offset.zero),
+                ancestor: overlay,
+              ),
             ),
             Offset.zero & overlay.size,
           );
-          showMenu<T>(context: context, position: position, items: items).then((val) {
-             if (val != null) onChanged(val);
+          showMenu<T>(context: context, position: position, items: items).then((
+            val,
+          ) {
+            if (val != null) onChanged(val);
           });
         },
       ),
@@ -471,7 +639,7 @@ class _SettingsTabState extends State<SettingsTab> {
   void _showAreaColorPicker(BuildContext context, Color initialColor) {
     HSVColor hsv = HSVColor.fromColor(initialColor);
     double hue = hsv.hue;
-    
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -481,7 +649,10 @@ class _SettingsTabState extends State<SettingsTab> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('Chạm vào vòng tròn để chọn tông màu', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const Text(
+                  'Chạm vào vòng tròn để chọn tông màu',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 const SizedBox(height: 20),
                 // --- Simple Color Wheel ---
                 SizedBox(
@@ -490,18 +661,16 @@ class _SettingsTabState extends State<SettingsTab> {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // The Wheel (Simplified using a set of segments)
-                      Transform.rotate(
-                        angle: -90 * (pi / 180),
-                        child: CustomPaint(
-                          size: const Size(200, 200),
-                          painter: ColorWheelPainter(),
-                        ),
+                      // The Wheel (Hue circle)
+                      CustomPaint(
+                        size: const Size(200, 200),
+                        painter: ColorWheelPainter(),
                       ),
                       // Gesture Overlay
                       GestureDetector(
                         onPanUpdate: (details) {
-                          final RenderBox box = context.findRenderObject() as RenderBox;
+                          final RenderBox box =
+                              context.findRenderObject() as RenderBox;
                           final Offset localOffset = details.localPosition;
                           final double centerX = 100;
                           final double centerY = 100;
@@ -546,8 +715,16 @@ class _SettingsTabState extends State<SettingsTab> {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     color: Colors.white,
-                                    border: Border.all(color: Colors.black26, width: 2),
-                                    boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                    border: Border.all(
+                                      color: Colors.black26,
+                                      width: 2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 4,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -561,9 +738,16 @@ class _SettingsTabState extends State<SettingsTab> {
                         height: 60,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor(),
+                          color: HSVColor.fromAHSV(
+                            1.0,
+                            hue,
+                            0.8,
+                            0.9,
+                          ).toColor(),
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
+                          boxShadow: [
+                            BoxShadow(color: Colors.black12, blurRadius: 8),
+                          ],
                         ),
                       ),
                     ],
@@ -573,15 +757,26 @@ class _SettingsTabState extends State<SettingsTab> {
                 // Current selection hint
                 Text(
                   'Màu đang chọn: #${HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor().value.toRadixString(16).substring(2).toUpperCase()}',
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Hủy'),
+              ),
               FilledButton(
                 onPressed: () async {
-                  final finalColor = HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor();
+                  final finalColor = HSVColor.fromAHSV(
+                    1.0,
+                    hue,
+                    0.8,
+                    0.9,
+                  ).toColor();
                   MyApp.themeColorNotifier.value = finalColor;
                   final prefs = await SharedPreferences.getInstance();
                   await prefs.setInt('themeColor', finalColor.value);
@@ -612,7 +807,7 @@ class ColorWheelPainter extends CustomPainter {
         ..color = HSVColor.fromAHSV(1.0, i.toDouble(), 0.8, 0.9).toColor()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 30; // Thickness of the wheel ring
-      
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - 15),
         i * (pi / 180),
