@@ -277,12 +277,12 @@ class _MainScreenState extends State<MainScreen> {
                   labelTextStyle: WidgetStateProperty.resolveWith((states) {
                     if (states.contains(WidgetState.selected)) {
                       return const TextStyle(
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        height: 0.5,
+                        height: 1.0,
                       );
                     }
-                    return const TextStyle(fontSize: 10, height: 0.5);
+                    return const TextStyle(fontSize: 11, height: 1.0);
                   }),
                   iconTheme: WidgetStateProperty.resolveWith((states) {
                     return const IconThemeData(size: 24);
@@ -292,6 +292,7 @@ class _MainScreenState extends State<MainScreen> {
               child: NavigationBar(
                 height: 52,
                 indicatorColor: Colors.transparent,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (int index) {
                   if (_selectedIndex == 0 && index == 0) {
@@ -311,44 +312,44 @@ class _MainScreenState extends State<MainScreen> {
                 destinations: <NavigationDestination>[
                   NavigationDestination(
                     selectedIcon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.home),
                     ),
                     icon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.home_outlined),
                     ),
                     label: 'Trang chủ',
                   ),
                   NavigationDestination(
                     selectedIcon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.add_circle),
                     ),
                     icon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.add_circle_outline),
                     ),
                     label: 'Thêm',
                   ),
                   NavigationDestination(
                     selectedIcon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.delete),
                     ),
                     icon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.delete_outline),
                     ),
                     label: 'Xóa',
                   ),
                   NavigationDestination(
                     selectedIcon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.settings),
                     ),
                     icon: Transform.translate(
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 2),
                       child: const Icon(Icons.settings_outlined),
                     ),
                     label: 'Cài đặt',
