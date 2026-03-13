@@ -149,398 +149,361 @@ class _SettingsTabState extends State<SettingsTab> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
+    return SingleChildScrollView(
       physics: const ClampingScrollPhysics(),
-      children: [
-        const Divider(),
-        ValueListenableBuilder<String>(
-          valueListenable: GithubService.apiRemaining,
-          builder: (context, remaining, _) {
-            return Column(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // --- Cụm Thông tin (Hàng 1) ---
+            Row(
               children: [
-                ListTile(
-                  title: const Text(
-                    'Giới hạn API',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  trailing: Text(
-                    '$remaining/5000',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                Expanded(
+                  child: Card(
+                    elevation: 0,
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    child: ValueListenableBuilder<String>(
+                      valueListenable: GithubService.apiRemaining,
+                      builder: (context, remaining, _) => ListTile(
+                        dense: true,
+                        title: const Text('API Limit', style: TextStyle(fontSize: 12)),
+                        subtitle: Text('$remaining/5000', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        leading: const Icon(Icons.api_rounded, size: 20),
+                      ),
                     ),
                   ),
                 ),
-                FutureBuilder<PackageInfo>(
-                  future: PackageInfo.fromPlatform(),
-                  builder: (context, snapshot) {
-                    final version = snapshot.hasData
-                        ? snapshot.data!.version
-                        : '...';
-                    return ListTile(
-                      title: const Text('Phiên bản hiện tại'),
-                      subtitle: const Text('Nhấn để kiểm tra cập nhật'),
-                      trailing: Text(
-                        'v$version',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      onTap: () => _manualUpdateCheck(context, version),
-                    );
-                  },
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Card(
+                    elevation: 0,
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    child: FutureBuilder<PackageInfo>(
+                      future: PackageInfo.fromPlatform(),
+                      builder: (context, snapshot) {
+                        final version = snapshot.hasData ? snapshot.data!.version : '...';
+                        return ListTile(
+                          dense: true,
+                          title: const Text('Phiên bản', style: TextStyle(fontSize: 12)),
+                          subtitle: Text('v$version', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                          leading: const Icon(Icons.info_outline_rounded, size: 20),
+                          onTap: () => _manualUpdateCheck(context, version),
+                        );
+                      },
+                    ),
+                  ),
                 ),
               ],
-            );
-          },
-        ),
-        const Divider(),
-        ValueListenableBuilder<bool>(
-          valueListenable: MyApp.hapticNotifier,
-          builder: (context, hapticsEnabled, _) {
-            return SwitchListTile(
-              title: const Text('Rung phản hồi'),
-              subtitle: const Text('Phản hồi xúc giác khi chạm, vuốt'),
-              secondary: const Icon(Icons.vibration),
-              value: hapticsEnabled,
-              onChanged: (bool value) async {
-                MyApp.hapticNotifier.value = value;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('hapticsEnabled', value);
-                if (value) {
-                  AppHaptics.lightImpact();
-                }
-              },
-            );
-          },
-        ),
-        ValueListenableBuilder<bool>(
-          valueListenable: MyApp.lockNotifier,
-          builder: (context, lockEnabled, _) {
-            return SwitchListTile(
-              title: const Text('Khoá ứng dụng'),
-              subtitle: const Text('Sử dụng vân tay hoặc khuôn mặt'),
-              secondary: const Icon(Icons.security),
-              value: lockEnabled,
-              onChanged: (bool value) async {
-                MyApp.lockNotifier.value = value;
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.setBool('lockEnabled', value);
-                if (value) {
-                  AppHaptics.lightImpact();
-                }
-              },
-            );
-          },
-        ),
-        const Divider(),
-        ValueListenableBuilder<int>(
-          valueListenable: MyApp.gridColumnsNotifier,
-          builder: (context, gridCols, _) {
-            return ListTile(
-              title: const Text('Số lượng cột lưới ảnh'),
-              trailing: SegmentedButton<int>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment<int>(value: 1, label: Text('1')),
-                  ButtonSegment<int>(value: 2, label: Text('2')),
-                  ButtonSegment<int>(value: 3, label: Text('3')),
-                ],
-                selected: {gridCols},
-                onSelectionChanged: (Set<int> newSelection) async {
-                  final newValue = newSelection.first;
-                  MyApp.gridColumnsNotifier.value = newValue;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('gridColumns', newValue);
-                  AppHaptics.selectionClick();
-                },
-              ),
-            );
-          },
-        ),
-        const Divider(),
-        ValueListenableBuilder<ThemeMode>(
-          valueListenable: MyApp.themeNotifier,
-          builder: (context, currentMode, _) {
-            return ListTile(
-              title: const Text('Chế độ sáng/tối'),
-              trailing: SegmentedButton<ThemeMode>(
-                showSelectedIcon: false,
-                segments: const [
-                  ButtonSegment<ThemeMode>(
-                    value: ThemeMode.system,
-                    icon: Icon(Icons.brightness_auto),
-                  ),
-                  ButtonSegment<ThemeMode>(
-                    value: ThemeMode.light,
-                    icon: Icon(Icons.wb_sunny_rounded),
-                  ),
-                  ButtonSegment<ThemeMode>(
-                    value: ThemeMode.dark,
-                    icon: Icon(Icons.nightlight_round),
-                  ),
-                ],
-                selected: {currentMode},
-                onSelectionChanged: (Set<ThemeMode> newSelection) async {
-                  final newValue = newSelection.first;
-                  MyApp.themeNotifier.value = newValue;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('themeMode', newValue.index);
-                  AppHaptics.selectionClick();
-                },
-              ),
-            );
-          },
-        ),
-        const Divider(),
-        ValueListenableBuilder<Color>(
-          valueListenable: MyApp.themeColorNotifier,
-          builder: (context, currentColor, _) {
-            final List<Color> extendedColors = [
-              Colors.red,
-              Colors.redAccent,
-              Colors.pink,
-              Colors.pinkAccent,
-              Colors.purple,
-              Colors.deepPurple,
-              Colors.indigo,
-              Colors.blue,
-              Colors.lightBlue,
-              Colors.cyan,
-              Colors.teal,
-              Colors.green,
-              Colors.lightGreen,
-              Colors.lime,
-              Colors.yellow,
-              Colors.amber,
-              Colors.orange,
-              Colors.deepOrange,
-              Colors.brown,
-              Colors.grey,
-              Colors.blueGrey,
-              const Color(0xFF1E88E5),
-              const Color(0xFF00897B),
-              const Color(0xFFD81B60),
-            ];
+            ),
 
-            return ListTile(
-              title: const Text('Chọn màu tùy chỉnh'),
-              subtitle: const Text('Nhấn để mở bảng màu'),
-              trailing: Material(
-                color: currentColor,
-                elevation: 0,
-                clipBehavior: Clip.antiAlias,
-                shape: const CircleBorder(),
-                child: const SizedBox(width: 36, height: 36),
-              ),
-              onTap: () {
-                AppHaptics.selectionClick();
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text('Chọn màu chủ đạo'),
-                      content: SizedBox(
-                        width: double.maxFinite,
-                        child: GridView.builder(
-                          shrinkWrap: true,
-                          physics: const ClampingScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 6,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                              ),
-                          itemCount: extendedColors.length,
-                          itemBuilder: (context, index) {
-                            final color = extendedColors[index];
-                            final isSelected =
-                                currentColor.value == color.value;
-                            return GestureDetector(
-                              onTap: () async {
-                                AppHaptics.selectionClick();
-                                MyApp.themeColorNotifier.value = color;
-                                final prefs =
-                                    await SharedPreferences.getInstance();
-                                await prefs.setInt('themeColor', color.value);
-                                if (context.mounted) Navigator.pop(context);
+            const SizedBox(height: 12),
+
+            // --- Cụm Hệ thống (Hàng 2 - Grid) ---
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 2.2,
+              children: [
+                // Rung
+                Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: MyApp.hapticNotifier,
+                    builder: (context, enabled, _) => InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        final newValue = !enabled;
+                        MyApp.hapticNotifier.value = newValue;
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('hapticsEnabled', newValue);
+                        if (newValue) AppHaptics.lightImpact();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        child: Row(
+                          children: [
+                            Icon(enabled ? Icons.vibration : Icons.vibration_outlined, 
+                                 size: 20, color: enabled ? Theme.of(context).colorScheme.primary : null),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Rung', style: TextStyle(fontSize: 13))),
+                            Switch(
+                              value: enabled,
+                              onChanged: (v) async {
+                                MyApp.hapticNotifier.value = v;
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setBool('hapticsEnabled', v);
                               },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
-                                  border: isSelected
-                                      ? Border.all(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurface,
-                                          width: 3,
-                                        )
-                                      : null,
-                                ),
-                                child: isSelected
-                                    ? const Icon(
-                                        Icons.check,
-                                        color: Colors.white,
-                                        size: 20,
-                                      )
-                                    : null,
-                              ),
-                            );
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Khóa
+                Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: MyApp.lockNotifier,
+                    builder: (context, enabled, _) => InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        final newValue = !enabled;
+                        MyApp.lockNotifier.value = newValue;
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('lockEnabled', newValue);
+                        if (newValue) AppHaptics.lightImpact();
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        child: Row(
+                          children: [
+                            Icon(enabled ? Icons.lock : Icons.lock_outline, 
+                                 size: 20, color: enabled ? Theme.of(context).colorScheme.primary : null),
+                            const SizedBox(width: 8),
+                            const Expanded(child: Text('Khóa', style: TextStyle(fontSize: 13))),
+                            Switch(
+                              value: enabled,
+                              onChanged: (v) async {
+                                MyApp.lockNotifier.value = v;
+                                final prefs = await SharedPreferences.getInstance();
+                                await prefs.setBool('lockEnabled', v);
+                              },
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Xoá Cache
+                Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      AppHaptics.mediumImpact();
+                      await DefaultCacheManager().emptyCache();
+                      // Clear files logic...
+                      final dirs = [await getTemporaryDirectory(), await getApplicationSupportDirectory()];
+                      for (final dir in dirs) {
+                        if (dir.existsSync()) {
+                          for (final entity in dir.listSync(recursive: true)) {
+                            if (entity is File) try { await entity.delete(); } catch (_) {}
+                          }
+                        }
+                      }
+                      await Future.delayed(const Duration(milliseconds: 400));
+                      await _calculateCacheSize();
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.delete_sweep_outlined, size: 20),
+                              SizedBox(width: 8),
+                              Text('Xoá Cache', style: TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                          Text(_cacheSize, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Đồng bộ
+                Card(
+                  elevation: 0,
+                  margin: EdgeInsets.zero,
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      AppHaptics.lightImpact();
+                      final now = DateTime.now();
+                      if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
+                        _syncTapCount = 1;
+                      } else {
+                        _syncTapCount++;
+                      }
+                      _lastTapTime = now;
+                      if (_syncTapCount < 5) return;
+                      _syncTapCount = 0;
+                      AppHaptics.mediumImpact();
+                      // Migration logic...
+                      final bool? confirmSync = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Đồng bộ dữ liệu?'),
+                          content: const Text('Bắt đầu đồng bộ kích thước từ GitHub sang Supabase?'),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+                            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Đồng ý')),
+                          ],
+                        ),
+                      );
+                      if (confirmSync != true) return;
+                      if (!SupabaseService.isInitialized) return;
+                      showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+                      final result = await MigrationUtility.migrateFromGitHub();
+                      Navigator.pop(context);
+                      showDialog(context: context, builder: (_) => AlertDialog(title: const Text('Kết quả'), content: Text(result), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng'))]));
+                    },
+                    child: const Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.sync_rounded, size: 20),
+                          SizedBox(width: 8),
+                          Text('Đồng bộ', style: TextStyle(fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+
+            // --- Giao diện (Hàng 3) ---
+            Card(
+              elevation: 0,
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Column(
+                  children: [
+                    ValueListenableBuilder<ThemeMode>(
+                      valueListenable: MyApp.themeNotifier,
+                      builder: (context, currentMode, _) => ListTile(
+                        dense: true,
+                        visualDensity: VisualDensity.compact,
+                        title: const Text('Chế độ màn hình', style: TextStyle(fontSize: 13)),
+                        trailing: SegmentedButton<ThemeMode>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(value: ThemeMode.system, icon: Icon(Icons.brightness_auto, size: 18)),
+                            ButtonSegment(value: ThemeMode.light, icon: Icon(Icons.wb_sunny_rounded, size: 18)),
+                            ButtonSegment(value: ThemeMode.dark, icon: Icon(Icons.nightlight_round, size: 18)),
+                          ],
+                          selected: {currentMode},
+                          onSelectionChanged: (newSelection) async {
+                            final newValue = newSelection.first;
+                            MyApp.themeNotifier.value = newValue;
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setInt('themeMode', newValue.index);
+                            AppHaptics.selectionClick();
                           },
                         ),
                       ),
-                    );
-                  },
-                );
-              },
-            );
-          },
-        ),
-        const Divider(),
-        ListTile(
-          title: const Text('Xoá bộ nhớ đệm'),
-          subtitle: Text('Dung lượng đang dùng: $_cacheSize'),
-          leading: const Icon(Icons.delete_outline),
-          onTap: () async {
-            AppHaptics.mediumImpact();
-            await DefaultCacheManager().emptyCache();
-            try {
-              final dirs = [
-                await getTemporaryDirectory(),
-                await getApplicationSupportDirectory(),
-              ];
-              for (final dir in dirs) {
-                if (dir.existsSync()) {
-                  final entities = dir.listSync(
-                    recursive: true,
-                    followLinks: false,
-                  );
-                  for (final entity in entities) {
-                    if (entity is File) {
-                      try {
-                        await entity.delete();
-                      } catch (_) {}
-                    }
-                  }
-                }
-              }
-            } catch (_) {}
-
-            await Future.delayed(const Duration(milliseconds: 400));
-            await _calculateCacheSize();
-
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã xoá sạch bộ nhớ đệm!'),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          },
-        ),
-        const Divider(),
-
-        ListTile(
-          title: const Text('Đồng bộ kích thước'),
-          subtitle: const Text('Lưu Kích Thước Ảnh'),
-          leading: const Icon(Icons.sync_rounded),
-          onTap: () async {
-            AppHaptics.lightImpact();
-
-            final now = DateTime.now();
-            if (_lastTapTime == null ||
-                now.difference(_lastTapTime!) >
-                    const Duration(milliseconds: 500)) {
-              _syncTapCount = 1;
-            } else {
-              _syncTapCount++;
-            }
-            _lastTapTime = now;
-
-            if (_syncTapCount < 5) {
-              return;
-            }
-
-            // Reset after success trigger
-            _syncTapCount = 0;
-            AppHaptics.mediumImpact();
-
-            final bool? confirmSync = await showDialog<bool>(
-              context: context,
-              barrierDismissible: false,
-              builder: (ctx) => PopScope(
-                canPop: false,
-                child: AlertDialog(
-                  title: const Text('Xác nhận đồng bộ ?'),
-                  content: const Text(
-                    'Bạn có muốn bắt đầu quá trình đồng bộ kích thước từ GitHub sang Supabase không?',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx, false),
-                      child: const Text('Hủy'),
                     ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Đồng ý'),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ValueListenableBuilder<int>(
+                      valueListenable: MyApp.gridColumnsNotifier,
+                      builder: (context, gridCols, _) => ListTile(
+                        dense: true,
+                        visualDensity: VisualDensity.compact,
+                        title: const Text('Bố cục lưới ảnh', style: TextStyle(fontSize: 13)),
+                        trailing: SegmentedButton<int>(
+                          showSelectedIcon: false,
+                          segments: const [
+                            ButtonSegment(value: 1, label: Text('1', style: TextStyle(fontSize: 12))),
+                            ButtonSegment(value: 2, label: Text('2', style: TextStyle(fontSize: 12))),
+                            ButtonSegment(value: 3, label: Text('3', style: TextStyle(fontSize: 12))),
+                          ],
+                          selected: {gridCols},
+                          onSelectionChanged: (newSelection) async {
+                            final newValue = newSelection.first;
+                            MyApp.gridColumnsNotifier.value = newValue;
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setInt('gridColumns', newValue);
+                            AppHaptics.selectionClick();
+                          },
+                        ),
+                      ),
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ValueListenableBuilder<Color>(
+                      valueListenable: MyApp.themeColorNotifier,
+                      builder: (context, currentColor, _) => ListTile(
+                        dense: true,
+                        visualDensity: VisualDensity.compact,
+                        title: const Text('Màu sắc chủ đạo', style: TextStyle(fontSize: 13)),
+                        trailing: Material(
+                          color: currentColor,
+                          shape: const CircleBorder(),
+                          child: const SizedBox(width: 28, height: 28),
+                        ),
+                        onTap: () {
+                          AppHaptics.selectionClick();
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              final List<Color> extendedColors = [
+                                Colors.red, Colors.redAccent, Colors.pink, Colors.pinkAccent,
+                                Colors.purple, Colors.deepPurple, Colors.indigo, Colors.blue,
+                                Colors.lightBlue, Colors.cyan, Colors.teal, Colors.green,
+                                Colors.lightGreen, Colors.lime, Colors.yellow, Colors.amber,
+                                Colors.orange, Colors.deepOrange, Colors.brown, Colors.grey,
+                                Colors.blueGrey, const Color(0xFF1E88E5), const Color(0xFF00897B), const Color(0xFFD81B60),
+                              ];
+                              return AlertDialog(
+                                title: const Text('Chọn màu chủ đạo'),
+                                content: SizedBox(
+                                  width: double.maxFinite,
+                                  child: GridView.builder(
+                                    shrinkWrap: true,
+                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 6, crossAxisSpacing: 12, mainAxisSpacing: 12),
+                                    itemCount: extendedColors.length,
+                                    itemBuilder: (context, index) {
+                                      final color = extendedColors[index];
+                                      final isSelected = currentColor.value == color.value;
+                                      return GestureDetector(
+                                        onTap: () async {
+                                          AppHaptics.selectionClick();
+                                          MyApp.themeColorNotifier.value = color;
+                                          final prefs = await SharedPreferences.getInstance();
+                                          await prefs.setInt('themeColor', color.value);
+                                          Navigator.pop(context);
+                                        },
+                                        child: Container(
+                                          decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: isSelected ? Border.all(color: Theme.of(context).colorScheme.onSurface, width: 3) : null),
+                                          child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),
               ),
-            );
-
-            if (confirmSync != true) return;
-
-            if (!SupabaseService.isInitialized) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Vui lòng cấu hình Supabase trước!'),
-                ),
-              );
-              return;
-            }
-
-            if (context.mounted) {
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) => const PopScope(
-                  canPop: false,
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              );
-
-              final result = await MigrationUtility.migrateFromGitHub();
-
-              if (context.mounted) {
-                Navigator.pop(context); // Đóng Loading
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => PopScope(
-                    canPop: false,
-                    child: AlertDialog(
-                      title: const Text('Kết quả đồng bộ'),
-                      content: Text(result),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text('Đóng'),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-            }
-          },
+            ),
+          ],
         ),
-        const SizedBox(height: 24),
-      ],
+      ),
     );
   }
 }
