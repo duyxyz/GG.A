@@ -395,13 +395,7 @@ class _SettingsTabState extends State<SettingsTab> {
           },
         ),
         const Divider(),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Text(
-            'Quản trị cơ sở dữ liệu',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
-          ),
-        ),
+
         ListTile(
           title: const Text('Đồng bộ kích thước'),
           subtitle: const Text('Lấy dữ liệu từ GitHub và đẩy vào Supabase'),

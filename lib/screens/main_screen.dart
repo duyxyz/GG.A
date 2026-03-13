@@ -256,11 +256,18 @@ class _MainScreenState extends State<MainScreen> {
         ),
         bottomNavigationBar: Stack(
           children: [
-            NavigationBar(
-              height: 65,
-              indicatorColor: Colors.transparent,
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (int index) {
+            Theme(
+              data: Theme.of(context).copyWith(
+                splashFactory: NoSplash.splashFactory,
+                highlightColor: Colors.transparent,
+                splashColor: Colors.transparent,
+                hoverColor: Colors.transparent,
+              ),
+              child: NavigationBar(
+                height: 65,
+                indicatorColor: Colors.transparent,
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (int index) {
                 if (_selectedIndex == 0 && index == 0) {
                   if (_homeScrollController.hasClients) {
                     _homeScrollController.animateTo(
