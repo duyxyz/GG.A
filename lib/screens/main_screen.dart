@@ -48,12 +48,13 @@ class _MainScreenState extends State<MainScreen> {
     _metadataSubscription = SupabaseService.metadataStream().listen((data) {
       if (data.isNotEmpty && mounted) {
         bool hasChanges = false;
-        
+
         // 1. Cập nhật tỷ lệ ảnh cũ ngay tại chỗ nếu đã có dữ liệu GitHub
         if (_images.isNotEmpty) {
           final Map<int, double> newRatios = {
-            for (var item in data) 
-              item['image_index'] as int: (item['aspect_ratio'] as num).toDouble()
+            for (var item in data)
+              item['image_index'] as int: (item['aspect_ratio'] as num)
+                  .toDouble(),
           };
 
           for (var i = 0; i < _images.length; i++) {
@@ -79,7 +80,7 @@ class _MainScreenState extends State<MainScreen> {
           if (mounted) {
             // Kiểm tra xem số lượng ảnh có khớp không, nếu không khớp thì load lại
             // (Số lượng ảnh thực tế từ GitHub có thể khác với Supabase lúc đang đồng bộ)
-            _loadData(); 
+            _loadData();
           }
         });
       }
@@ -180,7 +181,7 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = 0; // Quay về trang chủ
       _images = []; // Xóa dữ liệu cũ để hiện loading
     });
-    
+
     // Cuộn lên đầu trang
     if (_homeScrollController.hasClients) {
       _homeScrollController.jumpTo(0);
@@ -263,49 +264,63 @@ class _MainScreenState extends State<MainScreen> {
                 highlightColor: Colors.transparent,
                 splashColor: Colors.transparent,
                 hoverColor: Colors.transparent,
+                navigationBarTheme: NavigationBarThemeData(
+                  labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                    if (states.contains(WidgetState.selected)) {
+                      return const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      );
+                    }
+                    return const TextStyle(fontSize: 11);
+                  }),
+                  iconTheme: WidgetStateProperty.resolveWith((states) {
+                    return const IconThemeData(size: 25);
+                  }),
+                ),
               ),
               child: NavigationBar(
-                height: 65,
+                height: 52,
                 indicatorColor: Colors.transparent,
                 selectedIndex: _selectedIndex,
                 onDestinationSelected: (int index) {
-                if (_selectedIndex == 0 && index == 0) {
-                  if (_homeScrollController.hasClients) {
-                    _homeScrollController.animateTo(
-                      0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                    );
+                  if (_selectedIndex == 0 && index == 0) {
+                    if (_homeScrollController.hasClients) {
+                      _homeScrollController.animateTo(
+                        0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOut,
+                      );
+                    }
                   }
-                }
-                AppHaptics.lightImpact();
-                setState(() {
-                  _selectedIndex = index;
-                });
-              },
-              destinations: const <NavigationDestination>[
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.home),
-                  icon: Icon(Icons.home_outlined),
-                  label: 'Trang chủ',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.add_circle),
-                  icon: Icon(Icons.add_circle_outline),
-                  label: 'Thêm',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.delete),
-                  icon: Icon(Icons.delete_outline),
-                  label: 'Xóa',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.settings),
-                  icon: Icon(Icons.settings_outlined),
-                  label: 'Cài đặt',
-                ),
-              ],
-            ),
+                  AppHaptics.lightImpact();
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                destinations: const <NavigationDestination>[
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.home),
+                    icon: Icon(Icons.home_outlined),
+                    label: 'Trang chủ',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.add_circle),
+                    icon: Icon(Icons.add_circle_outline),
+                    label: 'Thêm',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.delete),
+                    icon: Icon(Icons.delete_outline),
+                    label: 'Xóa',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.settings),
+                    icon: Icon(Icons.settings_outlined),
+                    label: 'Cài đặt',
+                  ),
+                ],
+              ),
             ),
             // Lớp phủ trong suốt để bắt sự kiện Long Press vào nút Trang chủ
             Positioned(
