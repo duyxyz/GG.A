@@ -8,8 +8,7 @@ import 'dart:async';
 import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
 import '../tabs/home_tab.dart';
-import '../tabs/add_tab.dart';
-import '../tabs/delete_tab.dart';
+import '../tabs/manage_tab.dart';
 import '../tabs/settings_tab.dart';
 
 class MainScreen extends StatefulWidget {
@@ -250,19 +249,13 @@ class _MainScreenState extends State<MainScreen> {
                 onRefresh: _loadData,
                 scrollController: _homeScrollController,
               ),
-              AddTab(
+              ManageTab(
                 images: _images,
                 isLoading: _isLoading,
                 error: _error,
                 onRefresh: _loadData,
               ),
-              DeleteTab(
-                images: _images,
-                isLoading: _isLoading,
-                error: _error,
-                onRefresh: _loadData,
-              ),
-              SettingsTab(isSelected: _selectedIndex == 3),
+              SettingsTab(isSelected: _selectedIndex == 2),
             ],
           ),
         ),
@@ -293,14 +286,9 @@ class _MainScreenState extends State<MainScreen> {
               label: 'Trang chủ',
             ),
             NavigationDestination(
-              selectedIcon: Icon(Icons.add_circle),
-              icon: Icon(Icons.add_circle_outline),
-              label: 'Thêm',
-            ),
-            NavigationDestination(
-              selectedIcon: Icon(Icons.delete),
-              icon: Icon(Icons.delete_outline),
-              label: 'Xóa',
+              selectedIcon: Icon(Icons.photo_library),
+              icon: Icon(Icons.photo_library_outlined),
+              label: 'Quản lý',
             ),
             NavigationDestination(
               selectedIcon: Icon(Icons.settings),
