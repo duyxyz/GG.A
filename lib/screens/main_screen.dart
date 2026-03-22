@@ -229,8 +229,8 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildNavItem(IconData activeIcon, IconData icon, int index) {
     final isSelected = _selectedIndex == index;
     return IconButton(
-      iconSize: 28,
-      splashRadius: 24, // Fixes splash overflow to a tight circular radius
+      iconSize: 32,
+      splashRadius: 50, // To ra xíu nữa theo ý bạn
       splashColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
       highlightColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
       icon: Icon(isSelected ? activeIcon : icon),
@@ -297,10 +297,9 @@ class _MainScreenState extends State<MainScreen> {
         bottomNavigationBar: BottomAppBar(
           padding: EdgeInsets.zero,
           elevation: 0,
+          height: 48.0, // Bring it back down to the original 52 height
           color: Theme.of(context).colorScheme.surface,
-          child: SizedBox(
-            height: 56, // Standard height prevents any overflow issues
-            child: Row(
+          child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(Icons.home, Icons.home_outlined, 0),
