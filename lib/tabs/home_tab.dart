@@ -3,7 +3,6 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../main.dart';
 import '../widgets/image_grid_item.dart';
 import '../widgets/error_view.dart';
-import '../utils/haptics.dart';
 
 class HomeTab extends StatefulWidget {
   final List<Map<String, dynamic>> images;
@@ -56,9 +55,10 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
               itemCount: widget.images.length,
               itemBuilder: (context, index) {
                 final imageUrl = widget.images[index]['download_url'];
-                final aspectRatio = widget.images[index]['aspect_ratio'] as double;
+                final aspectRatio =
+                    widget.images[index]['aspect_ratio'] as double;
                 return ImageGridItem(
-                  imageUrl: imageUrl, 
+                  imageUrl: imageUrl,
                   aspectRatio: aspectRatio,
                   imageMap: widget.images[index],
                 );
@@ -72,9 +72,7 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
             bottom: 0,
             left: 0,
             right: 0,
-            child: SafeArea(
-              child: LinearProgressIndicator(),
-            ),
+            child: SafeArea(child: LinearProgressIndicator()),
           ),
       ],
     );

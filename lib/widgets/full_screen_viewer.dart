@@ -79,8 +79,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         _scale = newScale;
       } else if (_isDismissing) {
         _dismissOffset += details.focalPointDelta;
-        _dismissScale =
-            (1.0 - (_dismissOffset.distance / 1500)).clamp(0.6, 1.0);
+        _dismissScale = (1.0 - (_dismissOffset.distance / 1500)).clamp(
+          0.6,
+          1.0,
+        );
       } else if (_scale > 1.01) {
         _offset += details.focalPointDelta;
       }
@@ -132,11 +134,11 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       if (response.statusCode != 200) {
         throw Exception("Server trả về lỗi: ${response.statusCode}");
       }
-      
+
       final Uint8List imageBytes = response.bodyBytes;
       if (imageBytes.isEmpty) throw Exception("Dữ liệu ảnh trống");
 
-      final Uint8List? jpegBytes = await FlutterImageCompress.compressWithList(
+      final Uint8List jpegBytes = await FlutterImageCompress.compressWithList(
         imageBytes,
         format: CompressFormat.jpeg,
         quality: 95,
@@ -149,7 +151,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       final hasAccess = await Gal.hasAccess();
       if (!hasAccess) {
         final granted = await Gal.requestAccess();
-        if (!granted) throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
+        if (!granted)
+          throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
       }
 
       final fileName = p.basenameWithoutExtension(widget.imageUrl);
@@ -169,7 +172,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}'),
+            content: Text(
+              'Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}',
+            ),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
           ),
@@ -222,25 +227,28 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       if (img['index'] != null) {
         await SupabaseService.deleteImageMetadata(img['index'] as int);
       }
-      
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa ảnh thành công')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã xóa ảnh thành công')));
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi xóa ảnh: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi xóa ảnh: $e')));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
     }
   }
 
-  void _animateReset({required double targetScale, required Offset targetOffset}) {
+  void _animateReset({
+    required double targetScale,
+    required Offset targetOffset,
+  }) {
     final startScale = _scale;
     final startOffset = _offset;
 
@@ -250,10 +258,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       duration: const Duration(milliseconds: 250),
     );
 
-    final curved = CurvedAnimation(
-      parent: _resetAnim!,
-      curve: Curves.easeOut,
-    );
+    final curved = CurvedAnimation(parent: _resetAnim!, curve: Curves.easeOut);
 
     curved.addListener(() {
       setState(() {
@@ -289,7 +294,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                 builder: (context) => Container(
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -310,8 +317,14 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                       ),
                       if (widget.imageMap != null)
                         ListTile(
-                          leading: const Icon(Icons.delete_rounded, color: Colors.red),
-                          title: const Text('Xóa ảnh', style: TextStyle(color: Colors.red)),
+                          leading: const Icon(
+                            Icons.delete_rounded,
+                            color: Colors.red,
+                          ),
+                          title: const Text(
+                            'Xóa ảnh',
+                            style: TextStyle(color: Colors.red),
+                          ),
                           onTap: _deleteImage,
                         ),
                       const SizedBox(height: 20),

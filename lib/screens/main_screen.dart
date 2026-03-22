@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
 import 'package:package_info_plus/package_info_plus.dart';
-import '../main.dart';
 import '../services/github_service.dart';
 import '../services/supabase_service.dart';
 import 'dart:async';
@@ -231,10 +229,16 @@ class _MainScreenState extends State<MainScreen> {
     return IconButton(
       iconSize: 32,
       splashRadius: 50, // To ra xíu nữa theo ý bạn
-      splashColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-      highlightColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+      splashColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.15),
+      highlightColor: Theme.of(
+        context,
+      ).colorScheme.primary.withValues(alpha: 0.05),
       icon: Icon(isSelected ? activeIcon : icon),
-      color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+      color: isSelected
+          ? Theme.of(context).colorScheme.primary
+          : Theme.of(context).colorScheme.onSurfaceVariant,
       onPressed: () {
         if (_selectedIndex == 0 && index == 0) {
           if (_homeScrollController.hasClients) {
@@ -300,14 +304,13 @@ class _MainScreenState extends State<MainScreen> {
           height: 48.0, // Bring it back down to the original 52 height
           color: Theme.of(context).colorScheme.surface,
           child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.home, Icons.home_outlined, 0),
-                _buildNavItem(Icons.add_circle, Icons.add_circle_outline, 1),
-                _buildNavItem(Icons.delete, Icons.delete_outline, 2),
-                _buildNavItem(Icons.settings, Icons.settings_outlined, 3),
-              ],
-            ),
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildNavItem(Icons.home, Icons.home_outlined, 0),
+              _buildNavItem(Icons.add_circle, Icons.add_circle_outline, 1),
+              _buildNavItem(Icons.delete, Icons.delete_outline, 2),
+              _buildNavItem(Icons.settings, Icons.settings_outlined, 3),
+            ],
           ),
         ),
       ),

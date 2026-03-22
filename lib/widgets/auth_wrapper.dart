@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
 import '../main.dart';
-import '../utils/haptics.dart';
 
 class AuthWrapper extends StatefulWidget {
   final Widget child;
@@ -35,10 +34,12 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && MyApp.lockNotifier.value && !_isAuthenticated) {
+    if (state == AppLifecycleState.resumed &&
+        MyApp.lockNotifier.value &&
+        !_isAuthenticated) {
       _checkAuth();
     }
-    
+
     if (state == AppLifecycleState.paused && MyApp.lockNotifier.value) {
       setState(() => _isAuthenticated = false);
     }
@@ -46,12 +47,13 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
 
   Future<void> _checkAuth() async {
     if (_isAuthenticating || !MyApp.lockNotifier.value) return;
-    
+
     setState(() => _isAuthenticating = true);
 
     try {
       final bool canAuthenticateWithBiometrics = await auth.canCheckBiometrics;
-      final bool canAuthenticate = canAuthenticateWithBiometrics || await auth.isDeviceSupported();
+      final bool canAuthenticate =
+          canAuthenticateWithBiometrics || await auth.isDeviceSupported();
 
       if (!canAuthenticate) {
         setState(() => _isAuthenticated = true);
@@ -71,7 +73,7 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _isAuthenticated = true; 
+          _isAuthenticated = true;
           _isAuthenticating = false;
         });
       }
@@ -103,7 +105,11 @@ class _AuthWrapperState extends State<AuthWrapper> with WidgetsBindingObserver {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.lock_person_outlined, size: 100, color: Theme.of(context).colorScheme.primary),
+                Icon(
+                  Icons.lock_person_outlined,
+                  size: 100,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
                 const SizedBox(height: 64),
                 IconButton.filled(
                   onPressed: _checkAuth,

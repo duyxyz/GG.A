@@ -1,13 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:open_filex/open_filex.dart';
 import '../services/github_service.dart';
 
-Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updateData) async {
+Future<void> startUpdateProcess(
+  BuildContext context,
+  Map<String, dynamic> updateData,
+) async {
   if (!context.mounted) return;
 
   try {
@@ -18,7 +20,9 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
     if (bestAsset == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không tìm thấy bản APK phù hợp cho thiết bị này!')),
+          const SnackBar(
+            content: Text('Không tìm thấy bản APK phù hợp cho thiết bị này!'),
+          ),
         );
       }
       return;
@@ -30,7 +34,7 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
     debugPrint("Đã tìm thấy asset: $fileName");
 
     if (!context.mounted) return;
-    
+
     final progressNotifier = ValueNotifier<double>(0);
 
     showDialog(
@@ -43,7 +47,11 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(fileName, style: const TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+              Text(
+                fileName,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               ValueListenableBuilder<double>(
                 valueListenable: progressNotifier,
@@ -52,7 +60,10 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
                     children: [
                       LinearProgressIndicator(value: value),
                       const SizedBox(height: 8),
-                      Text('${(value * 100).toStringAsFixed(0)}%', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        '${(value * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   );
                 },
@@ -71,10 +82,12 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
       await oldFile.delete();
     }
 
-    final dio = Dio(BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(minutes: 5),
-    ));
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(minutes: 5),
+      ),
+    );
 
     await dio.download(
       downloadUrl,
@@ -89,7 +102,7 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
     debugPrint("Tải xong: $savePath");
 
     if (context.mounted) {
-       Navigator.of(context, rootNavigator: true).pop();
+      Navigator.of(context, rootNavigator: true).pop();
     }
 
     final result = await OpenFilex.open(savePath);
@@ -103,10 +116,11 @@ Future<void> startUpdateProcess(BuildContext context, Map<String, dynamic> updat
   } catch (e) {
     debugPrint("Lỗi cập nhật: $e");
     if (context.mounted) {
-      if (Navigator.canPop(context)) Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
-      );
+      if (Navigator.canPop(context))
+        Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
     }
   }
 }

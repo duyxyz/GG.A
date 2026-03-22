@@ -133,9 +133,9 @@ class _DeleteTabState extends State<DeleteTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const PulseSkeleton(width: 80, height: 80),
-            const SizedBox(height: 16),
-            const Text(
+            PulseSkeleton(width: 80, height: 80),
+            SizedBox(height: 16),
+            Text(
               "Đang xóa ảnh...",
               style: TextStyle(fontWeight: FontWeight.bold),
             ),

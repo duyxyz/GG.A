@@ -185,8 +185,9 @@ class _SettingsTabState extends State<SettingsTab> {
                     icon: Icons.info_outline_rounded,
                     onTap: () async {
                       final info = await PackageInfo.fromPlatform();
-                      if (context.mounted)
+                      if (context.mounted) {
                         _manualUpdateCheck(context, info.version);
+                      }
                     },
                     content: FutureBuilder<PackageInfo>(
                       future: PackageInfo.fromPlatform(),
@@ -216,10 +217,11 @@ class _SettingsTabState extends State<SettingsTab> {
                       for (final dir in dirs) {
                         if (dir.existsSync()) {
                           for (final entity in dir.listSync(recursive: true)) {
-                            if (entity is File)
+                            if (entity is File) {
                               try {
                                 await entity.delete();
                               } catch (_) {}
+                            }
                           }
                         }
                       }
@@ -239,7 +241,6 @@ class _SettingsTabState extends State<SettingsTab> {
             ),
 
             const SizedBox(height: 10),
-
 
             const SizedBox(height: 12),
 
@@ -350,11 +351,16 @@ class _SettingsTabState extends State<SettingsTab> {
                     },
                     displayLabel: (index) {
                       switch (index) {
-                        case 0: return 'Tự động';
-                        case 1: return 'Sáng';
-                        case 2: return 'Tối';
-                        case 3: return 'OLED';
-                        default: return 'Tự động';
+                        case 0:
+                          return 'Tự động';
+                        case 1:
+                          return 'Sáng';
+                        case 2:
+                          return 'Tối';
+                        case 3:
+                          return 'OLED';
+                        default:
+                          return 'Tự động';
                       }
                     },
                   ),
@@ -573,8 +579,11 @@ class _SettingsTabState extends State<SettingsTab> {
               ),
               Offset.zero & overlay.size,
             );
-            showMenu<T>(context: context, position: position, items: items)
-                .then((val) {
+            showMenu<T>(
+              context: context,
+              position: position,
+              items: items,
+            ).then((val) {
               if (val != null) onChanged(val);
             });
           },
@@ -777,7 +786,7 @@ class ColorWheelPainter extends CustomPainter {
         ..color = HSVColor.fromAHSV(1.0, i.toDouble(), 0.8, 0.9).toColor()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 40; // Thick enough to be easy to tap
-      
+
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius - 20),
         (i - 90) * (pi / 180), // Offset by -90 to match atan2 behavior

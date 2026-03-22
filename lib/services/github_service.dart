@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
@@ -12,6 +10,7 @@ class GithubService {
     const tokenFromEnv = String.fromEnvironment('GH_TOKEN');
     return tokenFromEnv.isNotEmpty ? tokenFromEnv : '';
   }
+
   static const String owner = 'duyxyz';
   static const String imageRepo = '12A1.Galary';
   static const String appRepo = '12A1.Android';
@@ -36,7 +35,7 @@ class GithubService {
 
   static Future<List<Map<String, dynamic>>> fetchImages() async {
     Map<int, double> aspectRatios = {};
-    
+
     // 1. Get metadata from Supabase
     try {
       final metadata = await SupabaseService.fetchImageMetadata();
@@ -70,9 +69,7 @@ class GithubService {
           });
         }
       }
-      images.sort(
-        (a, b) => b['index'].compareTo(a['index']),
-      );
+      images.sort((a, b) => b['index'].compareTo(a['index']));
       return images;
     } else {
       throw Exception('Lỗi API (${response.statusCode}): ${response.body}');
@@ -109,7 +106,9 @@ class GithubService {
     }
   }
 
-  static Future<Map<String, dynamic>?> findBestAsset(List<dynamic> assets) async {
+  static Future<Map<String, dynamic>?> findBestAsset(
+    List<dynamic> assets,
+  ) async {
     final deviceInfo = DeviceInfoPlugin();
     final androidInfo = await deviceInfo.androidInfo;
     final supportedAbis = androidInfo.supportedAbis;
@@ -134,14 +133,13 @@ class GithubService {
   static Future<Map<String, dynamic>> checkUpdate() async {
     try {
       final response = await http.get(
-        Uri.parse('https://api.github.com/repos/$owner/$appRepo/releases/latest'),
+        Uri.parse(
+          'https://api.github.com/repos/$owner/$appRepo/releases/latest',
+        ),
         headers: headers,
       );
       if (response.statusCode == 200) {
-        return {
-          'success': true,
-          'data': json.decode(response.body),
-        };
+        return {'success': true, 'data': json.decode(response.body)};
       } else {
         return {
           'success': false,
@@ -149,10 +147,7 @@ class GithubService {
         };
       }
     } catch (e) {
-      return {
-        'success': false,
-        'error': 'Lỗi kết nối: $e',
-      };
+      return {'success': false, 'error': 'Lỗi kết nối: $e'};
     }
   }
 
