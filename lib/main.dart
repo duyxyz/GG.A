@@ -79,7 +79,7 @@ class MyApp extends StatelessWidget {
               ),
               navigationBarTheme: NavigationBarThemeData(
                 backgroundColor: isOled ? Colors.black : null,
-                indicatorColor: isOled ? currentColor.withValues(alpha: 0.2) : null,
+                indicatorColor: Colors.transparent,
               ),
               useMaterial3: true,
             );
