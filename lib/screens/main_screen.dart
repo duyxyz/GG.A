@@ -226,6 +226,33 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  Widget _buildNavItem(IconData activeIcon, IconData icon, int index) {
+    final isSelected = _selectedIndex == index;
+    return IconButton(
+      iconSize: 28,
+      splashRadius: 24, // Fixes splash overflow to a tight circular radius
+      splashColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
+      highlightColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
+      icon: Icon(isSelected ? activeIcon : icon),
+      color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurfaceVariant,
+      onPressed: () {
+        if (_selectedIndex == 0 && index == 0) {
+          if (_homeScrollController.hasClients) {
+            _homeScrollController.animateTo(
+              0,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        }
+        AppHaptics.lightImpact();
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -267,49 +294,22 @@ class _MainScreenState extends State<MainScreen> {
           ),
         ),
         extendBody: false,
-        bottomNavigationBar: BottomNavigationBar(
+        bottomNavigationBar: BottomAppBar(
+          padding: EdgeInsets.zero,
           elevation: 0,
-          showSelectedLabels: false,
-          showUnselectedLabels: false,
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _selectedIndex,
-          onTap: (int index) {
-            if (_selectedIndex == 0 && index == 0) {
-              if (_homeScrollController.hasClients) {
-                _homeScrollController.animateTo(
-                  0,
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeOut,
-                );
-              }
-            }
-            AppHaptics.lightImpact();
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          items: const <BottomNavigationBarItem>[
-            BottomNavigationBarItem(
-              activeIcon: Icon(Icons.home),
-              icon: Icon(Icons.home_outlined),
-              label: 'Trang chủ',
+          color: Theme.of(context).colorScheme.surface,
+          child: SizedBox(
+            height: 56, // Standard height prevents any overflow issues
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.home, Icons.home_outlined, 0),
+                _buildNavItem(Icons.add_circle, Icons.add_circle_outline, 1),
+                _buildNavItem(Icons.delete, Icons.delete_outline, 2),
+                _buildNavItem(Icons.settings, Icons.settings_outlined, 3),
+              ],
             ),
-            BottomNavigationBarItem(
-              activeIcon: Icon(Icons.add_circle),
-              icon: Icon(Icons.add_circle_outline),
-              label: 'Thêm',
-            ),
-            BottomNavigationBarItem(
-              activeIcon: Icon(Icons.delete),
-              icon: Icon(Icons.delete_outline),
-              label: 'Xóa',
-            ),
-            BottomNavigationBarItem(
-              activeIcon: Icon(Icons.settings),
-              icon: Icon(Icons.settings_outlined),
-              label: 'Cài đặt',
-            ),
-          ],
+          ),
         ),
       ),
     );
