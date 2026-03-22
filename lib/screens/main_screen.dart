@@ -228,13 +228,9 @@ class _MainScreenState extends State<MainScreen> {
     final isSelected = _selectedIndex == index;
     return IconButton(
       iconSize: 32,
-      splashRadius: 50, // To ra xíu nữa theo ý bạn
-      splashColor: Theme.of(
-        context,
-      ).colorScheme.primary.withValues(alpha: 0.15),
-      highlightColor: Theme.of(
-        context,
-      ).colorScheme.primary.withValues(alpha: 0.05),
+      splashColor: Colors.transparent,
+      highlightColor: Colors.transparent,
+      hoverColor: Colors.transparent,
       icon: Icon(isSelected ? activeIcon : icon),
       color: isSelected
           ? Theme.of(context).colorScheme.primary
