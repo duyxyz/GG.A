@@ -118,33 +118,10 @@ class _MainScreenState extends State<MainScreen> {
   ) {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('🎉 Có bản cập nhật mới!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Phiên bản mới: ${updateData['tag_name']}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Nội dung thay đổi:',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
-            ),
-            const SizedBox(height: 4),
-            Container(
-              constraints: const BoxConstraints(maxHeight: 200),
-              child: SingleChildScrollView(
-                child: Text(
-                  updateData['body'] ?? 'Cập nhật tính năng mới và sửa lỗi.',
-                  style: const TextStyle(fontSize: 13),
-                ),
-              ),
-            ),
-          ],
+        title: const Text('Cập nhật ứng dụng'),
+        content: Text(
+          'Đã có phiên bản mới ${updateData['tag_name']}. Bạn muốn tải về và cài đặt ngay không?',
         ),
         actions: [
           TextButton(
@@ -156,7 +133,7 @@ class _MainScreenState extends State<MainScreen> {
               Navigator.pop(dialogCtx);
               startUpdateProcess(context, updateData);
             },
-            child: const Text('Cập nhật ngay'),
+            child: const Text('Cập nhật'),
           ),
         ],
       ),
@@ -305,17 +282,17 @@ class _MainScreenState extends State<MainScreen> {
             elevation: 0,
             height: 48.0, // Bring it back down to the original 52 height
             color: Colors.transparent,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.home, Icons.home_outlined, 0),
-              _buildNavItem(Icons.add_circle, Icons.add_circle_outline, 1),
-              _buildNavItem(Icons.settings, Icons.settings_outlined, 2),
-            ],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildNavItem(Icons.home, Icons.home_outlined, 0),
+                _buildNavItem(Icons.add_circle, Icons.add_circle_outline, 1),
+                _buildNavItem(Icons.settings, Icons.settings_outlined, 2),
+              ],
+            ),
           ),
         ),
       ),
-    ),
     );
   }
 }

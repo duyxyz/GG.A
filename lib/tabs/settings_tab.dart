@@ -119,17 +119,10 @@ class _SettingsTabState extends State<SettingsTab> {
   ) {
     showDialog(
       context: context,
-      barrierDismissible: false,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('🎉 Có bản cập nhật mới!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Phiên bản mới: ${updateData['tag_name']}'),
-            const SizedBox(height: 8),
-            Text(updateData['body'] ?? 'Cập nhật tính năng mới và sửa lỗi.'),
-          ],
+        title: const Text('Cập nhật ứng dụng'),
+        content: Text(
+          'Đã phiên bản mới ${updateData['tag_name']}. Bạn muốn tải về và cài đặt ngay không?',
         ),
         actions: [
           TextButton(
@@ -141,7 +134,7 @@ class _SettingsTabState extends State<SettingsTab> {
               Navigator.pop(dialogCtx);
               startUpdateProcess(context, updateData);
             },
-            child: const Text('Cập nhật ngay'),
+            child: const Text('Cập nhật'),
           ),
         ],
       ),

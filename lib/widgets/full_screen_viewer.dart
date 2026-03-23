@@ -278,7 +278,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         : 1.0;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: bgOpacity),
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor.withOpacity(bgOpacity),
       body: Stack(
         children: [
           GestureDetector(
@@ -292,46 +294,54 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                 context: context,
                 backgroundColor: Colors.transparent,
                 builder: (context) => Container(
+                  padding: const EdgeInsets.only(bottom: 24),
                   decoration: BoxDecoration(
                     color: Theme.of(context).cardColor,
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
+                      top: Radius.circular(24),
                     ),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      ListTile(
-                        leading: const Icon(Icons.download_rounded),
-                        title: const Text('Tải xuống'),
-                        onTap: _downloadImage,
-                      ),
-                      if (widget.imageMap != null)
-                        ListTile(
-                          leading: const Icon(
-                            Icons.delete_rounded,
-                            color: Colors.red,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.symmetric(vertical: 12),
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(2),
                           ),
-                          title: const Text(
-                            'Xóa ảnh',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                          onTap: _deleteImage,
                         ),
-                      const SizedBox(height: 20),
-                    ],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: _downloadImage,
+                              icon: const Icon(Icons.download_rounded),
+                              label: const Text('Tải xuống'),
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                              ),
+                            ),
+                            if (widget.imageMap != null)
+                              FilledButton.icon(
+                                onPressed: _deleteImage,
+                                icon: const Icon(Icons.delete_rounded),
+                                label: const Text('Xóa ảnh'),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                                  foregroundColor: Theme.of(context).colorScheme.error,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
-                ),
-              );
+                );
             },
             behavior: HitTestBehavior.opaque,
             child: SizedBox.expand(
@@ -354,8 +364,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,
-                            errorWidget: (context, url, error) =>
-                                Icon(Icons.error, color: Theme.of(context).colorScheme.error),
+                            errorWidget: (context, url, error) => Icon(
+                              Icons.error,
+                              color: Theme.of(context).colorScheme.error,
+                            ),
                           ),
                         ),
                       ),
