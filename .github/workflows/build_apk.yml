@@ -1,13 +1,7 @@
 name: Flutter Build APK
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch: # Cho phép chạy thủ công từ tab Actions trên GitHub
+  workflow_dispatch: # Chỉ chạy thủ công khi bạn tự bấm nút trên GitHub
 
 jobs:
   build:
