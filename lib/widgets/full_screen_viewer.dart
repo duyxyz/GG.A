@@ -278,7 +278,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         : 1.0;
 
     return Scaffold(
-      backgroundColor: Colors.black.withValues(alpha: bgOpacity),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: bgOpacity),
       body: Stack(
         children: [
           GestureDetector(
@@ -355,7 +355,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                             width: double.infinity,
                             height: double.infinity,
                             errorWidget: (context, url, error) =>
-                                const Icon(Icons.error, color: Colors.white),
+                                Icon(Icons.error, color: Theme.of(context).colorScheme.error),
                           ),
                         ),
                       ),

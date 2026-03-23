@@ -55,7 +55,7 @@ class _PulseSkeletonState extends State<PulseSkeleton>
             height: widget.height ?? double.infinity,
             decoration: BoxDecoration(
               color: color,
-              borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
+              borderRadius: widget.borderRadius ?? BorderRadius.zero,
             ),
           ),
         );
