@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/main_screen.dart';
 import 'services/supabase_service.dart';
-import 'widgets/auth_wrapper.dart';
 import 'utils/scroll_behavior.dart';
 
 void main() async {
@@ -14,14 +13,12 @@ void main() async {
   final themeIndex = prefs.getInt('themeMode') ?? 0;
   final colorValue = prefs.getInt('themeColor') ?? Colors.blueAccent.value;
   final hapticsEnabled = prefs.getBool('hapticsEnabled') ?? true;
-  final lockEnabled = prefs.getBool('lockEnabled') ?? false;
   final gridCols = prefs.getInt('gridColumns') ?? 2;
   
   // themeIndex: 0=system, 1=light, 2=dark, 3=oled
   MyApp.themeIndexNotifier.value = themeIndex;
   MyApp.themeColorNotifier.value = Color(colorValue);
   MyApp.hapticNotifier.value = hapticsEnabled;
-  MyApp.lockNotifier.value = lockEnabled;
   MyApp.gridColumnsNotifier.value = gridCols;
   MyApp.platformNotifier.value = null; // No longer manual override by default
 
@@ -38,8 +35,6 @@ class MyApp extends StatelessWidget {
   );
 
   static final ValueNotifier<bool> hapticNotifier = ValueNotifier(true);
-
-  static final ValueNotifier<bool> lockNotifier = ValueNotifier(false);
 
   static final ValueNotifier<int> gridColumnsNotifier = ValueNotifier(2);
 
@@ -94,7 +89,7 @@ class MyApp extends StatelessWidget {
               themeMode: themeMode,
               themeAnimationDuration: const Duration(milliseconds: 500),
               themeAnimationCurve: Curves.easeInOut,
-              home: const AuthWrapper(child: MainScreen()),
+              home: const MainScreen(),
             );
           },
         );

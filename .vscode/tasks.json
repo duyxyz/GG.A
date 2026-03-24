@@ -9,7 +9,10 @@
         "run",
         "flutter_launcher_icons"
       ],
-      "group": "build",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": [],
       "presentation": {
         "reveal": "always",

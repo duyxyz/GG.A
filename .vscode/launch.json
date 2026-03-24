@@ -2,12 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "12A1.Android",
+            "name": "Run Emulator",
             "request": "launch",
             "type": "dart",
             "toolArgs": [
                 "--dart-define-from-file=.env"
             ]
+        },
+        {
+            "name": "flutter_launcher_icons",
+            "request": "launch",
+            "type": "dart",
+            "toolArgs": [
+                "--dart-define-from-file=.env"
+            ],
+            "preLaunchTask": "Tạo Logo App Mới"
         }
     ]
 }

@@ -181,18 +181,6 @@ class _SettingsTabState extends State<SettingsTab> {
                   if (v) AppHaptics.lightImpact();
                 },
               ),
-              const Divider(height: 1, indent: 48),
-              _buildSwitchTile(
-                title: 'Khóa ứng dụng',
-                icon: Icons.lock_outline_rounded,
-                notifier: MyApp.lockNotifier,
-                onChanged: (v) async {
-                  MyApp.lockNotifier.value = v;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('lockEnabled', v);
-                  if (v) AppHaptics.lightImpact();
-                },
-              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -464,15 +452,7 @@ class _SettingsTabState extends State<SettingsTab> {
       _syncTapCount++;
     }
     _lastTapTime = now;
-    if (_syncTapCount < 5) {
-      if (_syncTapCount >= 3) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Chạm thêm ${5 - _syncTapCount} lần nữa để đồng bộ'),
-            duration: const Duration(seconds: 1),
-          ),
-        );
-      }
+    if (_syncTapCount < 10) {
       return;
     }
 
@@ -480,6 +460,7 @@ class _SettingsTabState extends State<SettingsTab> {
     AppHaptics.mediumImpact();
     final bool? confirmSync = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận đồng bộ?'),
         content: const Text(
