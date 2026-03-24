@@ -88,7 +88,9 @@ class _ImageGridItemState extends State<ImageGridItem>
           child: Hero(
             tag: widget.imageUrl,
             child: CachedNetworkImage(
-              imageUrl: widget.imageUrl,
+              imageUrl: widget.imageMap != null && widget.imageMap!['sha'] != null
+                  ? '${widget.imageUrl}?v=${widget.imageMap!['sha']}'
+                  : widget.imageUrl,
               fit: BoxFit.cover,
               fadeInDuration: const Duration(milliseconds: 300),
               fadeOutDuration: const Duration(milliseconds: 300),

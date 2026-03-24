@@ -130,7 +130,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     AppHaptics.mediumImpact();
 
     try {
-      final response = await http.get(Uri.parse(widget.imageUrl));
+      final downloadUrl = widget.imageMap != null && widget.imageMap!['sha'] != null 
+          ? '${widget.imageUrl}?v=${widget.imageMap!['sha']}'
+          : widget.imageUrl;
+      final response = await http.get(Uri.parse(downloadUrl));
       if (response.statusCode != 200) {
         throw Exception("Server trả về lỗi: ${response.statusCode}");
       }
@@ -370,7 +373,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                         child: AspectRatio(
                           aspectRatio: widget.aspectRatio,
                           child: CachedNetworkImage(
-                            imageUrl: widget.imageUrl,
+                            imageUrl: widget.imageMap != null && widget.imageMap!['sha'] != null
+                                ? '${widget.imageUrl}?v=${widget.imageMap!['sha']}'
+                                : widget.imageUrl,
                             fit: BoxFit.cover,
                             width: double.infinity,
                             height: double.infinity,
