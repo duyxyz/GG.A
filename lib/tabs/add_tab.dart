@@ -33,6 +33,7 @@ class AddTabState extends State<AddTab> {
   Future<void> pickImage() async {
     await _pickImage();
   }
+
   bool _isUploading = false;
   String _uploadStatus = "";
   final ImagePicker _picker = ImagePicker();
@@ -64,10 +65,7 @@ class AddTabState extends State<AddTab> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Xác nhận Đăng Ảnh'),
-          content: Text(
-            'Bạn có chắc chắn muốn đăng ${_selectedImages.length} bức ảnh này lên Bộ Sưu Tập chung không?',
-          ),
+          title: Text('Đăng ${_selectedImages.length} ảnh ?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -75,7 +73,7 @@ class AddTabState extends State<AddTab> {
             ),
             FilledButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Đồng ý'),
+              child: const Text('Đăng'),
             ),
           ],
         );
@@ -231,105 +229,99 @@ class AddTabState extends State<AddTab> {
           SafeArea(
             child: Column(
               children: [
-                if (widget.isLoading)
-                  const LinearProgressIndicator(),
+                if (widget.isLoading) const LinearProgressIndicator(),
                 Expanded(
                   child: GridView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 3,
-                                crossAxisSpacing: 12,
-                                mainAxisSpacing: 12,
-                              ),
-                          itemCount: _selectedImages.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == _selectedImages.length) {
-                              return InkWell(
-                                onTap: _pickImage,
-                                borderRadius: BorderRadius.circular(16),
-                                child: DottedBorder(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .outlineVariant
-                                      .withValues(alpha: 0.5),
-                                  strokeWidth: 2,
-                                  dashPattern: const [6, 4],
-                                  borderType: BorderType.RRect,
-                                  radius: const Radius.circular(16),
-                                  padding: EdgeInsets.zero,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .surfaceContainerHighest
-                                          .withValues(alpha: 0.3),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.add_rounded,
-                                        size: 32,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }
-                            return Stack(
-                              children: [
-                                Positioned.fill(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: Theme.of(
-                                          context,
-                                        ).dividerColor.withValues(alpha: 0.1),
-                                      ),
-                                    ),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(16),
-                                      child: Image.file(
-                                        File(_selectedImages[index].path),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 6,
-                                  right: 6,
-                                  child: GestureDetector(
-                                    onTap: () => _removeImage(index),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.6,
-                                        ),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.close_rounded,
-                                        size: 16,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
                         ),
-                      ),
-                    ],
+                    itemCount: _selectedImages.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index == _selectedImages.length) {
+                        return InkWell(
+                          onTap: _pickImage,
+                          borderRadius: BorderRadius.circular(16),
+                          child: DottedBorder(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            strokeWidth: 2,
+                            dashPattern: const [6, 4],
+                            borderType: BorderType.RRect,
+                            radius: const Radius.circular(16),
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerHighest
+                                    .withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.add_rounded,
+                                  size: 32,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                      return Stack(
+                        children: [
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Theme.of(
+                                    context,
+                                  ).dividerColor.withValues(alpha: 0.1),
+                                ),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.file(
+                                  File(_selectedImages[index].path),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: GestureDetector(
+                              onTap: () => _removeImage(index),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.close_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
+              ],
+            ),
+          ),
           if (_isUploading)
             Container(
               color: Colors.black45,

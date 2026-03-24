@@ -121,9 +121,7 @@ class _SettingsTabState extends State<SettingsTab> {
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('Cập nhật ứng dụng'),
-        content: Text(
-          'Đã phiên bản mới ${updateData['tag_name']}. Bạn muốn tải về và cài đặt ngay không?',
-        ),
+        content: Text('Đã phiên bản mới ${updateData['tag_name']}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
@@ -462,7 +460,7 @@ class _SettingsTabState extends State<SettingsTab> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xác nhận đồng bộ?'),
+        title: const Text('Xác nhận đồng bộ ?'),
         content: const Text(
           'Bắt đầu đồng bộ dữ liệu sửa lỗi từ hộp lưu trữ sang Mạng lưới ảnh?',
         ),

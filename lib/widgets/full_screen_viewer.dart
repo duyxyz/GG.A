@@ -197,10 +197,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Xác nhận Xóa Ảnh'),
-          content: const Text(
-            'Bạn có chắc chắn muốn xóa vĩnh viễn bức ảnh này không? Hành động này không thể hoàn tác.',
-          ),
+          title: const Text('Xóa ảnh này ?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -212,7 +209,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                 foregroundColor: Colors.white,
               ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Xóa vĩnh viễn'),
+              child: const Text('Xóa'),
             ),
           ],
         );
@@ -304,47 +301,57 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                       top: Radius.circular(24),
                     ),
                   ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          margin: const EdgeInsets.symmetric(vertical: 12),
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(2),
-                          ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
                         ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            FilledButton.tonalIcon(
-                              onPressed: _downloadImage,
-                              icon: const Icon(Icons.download_rounded),
-                              label: const Text('Tải xuống'),
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          FilledButton.tonalIcon(
+                            onPressed: _downloadImage,
+                            icon: const Icon(Icons.download_rounded),
+                            label: const Text('Tải xuống'),
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
                               ),
                             ),
-                            if (widget.imageMap != null)
-                              FilledButton.icon(
-                                onPressed: _deleteImage,
-                                icon: const Icon(Icons.delete_rounded),
-                                label: const Text('Xóa ảnh'),
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
-                                  foregroundColor: Theme.of(context).colorScheme.error,
-                                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          ),
+                          if (widget.imageMap != null)
+                            FilledButton.icon(
+                              onPressed: _deleteImage,
+                              icon: const Icon(Icons.delete_rounded),
+                              label: const Text('Xóa ảnh'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.errorContainer,
+                                foregroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.error,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
                                 ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                    ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
-                );
+                ),
+              );
             },
             behavior: HitTestBehavior.opaque,
             child: SizedBox.expand(
