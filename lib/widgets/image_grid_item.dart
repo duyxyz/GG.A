@@ -37,20 +37,29 @@ class _ImageGridItemState extends State<ImageGridItem>
           const navBarHeight = 80.0;
           final viewportBottom = screenHeight - navBarHeight;
 
+          final topThreshold = MediaQuery.of(context).padding.top + kToolbarHeight;
+          bool needsDelay = false;
+
           if (bottom > viewportBottom) {
-            await Scrollable.ensureVisible(
+            Scrollable.ensureVisible(
               context,
-              duration: const Duration(milliseconds: 120),
+              duration: const Duration(milliseconds: 150),
               alignment: 1.0, 
               curve: Curves.easeOut,
             );
-          } else if (position.dy < 0) {
-            await Scrollable.ensureVisible(
+            needsDelay = true;
+          } else if (position.dy < topThreshold) {
+            Scrollable.ensureVisible(
               context,
-              duration: const Duration(milliseconds: 120),
+              duration: const Duration(milliseconds: 150),
               alignment: 0.0,
               curve: Curves.easeOut,
             );
+            needsDelay = true;
+          }
+          
+          if (needsDelay) {
+            await Future.delayed(const Duration(milliseconds: 150));
           }
         }
 
