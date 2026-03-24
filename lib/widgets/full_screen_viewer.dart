@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
-import 'package:shimmer/shimmer.dart';
+
 import 'package:gal/gal.dart';
 import 'package:path/path.dart' as p;
 import '../utils/haptics.dart';
