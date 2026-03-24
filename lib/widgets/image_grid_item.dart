@@ -40,16 +40,16 @@ class _ImageGridItemState extends State<ImageGridItem>
           if (bottom > viewportBottom) {
             await Scrollable.ensureVisible(
               context,
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 120),
               alignment: 1.0, 
-              curve: Curves.easeInOut,
+              curve: Curves.easeOut,
             );
           } else if (position.dy < 0) {
             await Scrollable.ensureVisible(
               context,
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 120),
               alignment: 0.0,
-              curve: Curves.easeInOut,
+              curve: Curves.easeOut,
             );
           }
         }
