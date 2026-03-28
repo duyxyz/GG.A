@@ -40,6 +40,7 @@ class SupabaseService {
   }
 
   static Future<List<Map<String, dynamic>>> fetchImageMetadata() async {
+    if (!_initialized) return [];
     try {
       final data = await client
           .from('images')
@@ -53,6 +54,7 @@ class SupabaseService {
   }
 
   static Future<void> upsertImageMetadata(int index, int width, int height) async {
+    if (!_initialized) return;
     try {
       await client.from('images').upsert({
         'image_index': index,

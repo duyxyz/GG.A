@@ -107,21 +107,27 @@ class AddTabState extends State<AddTab> {
 
         if (compressedBytes == null) continue;
 
-        final nextIndex = await SupabaseService.reserveNextImageIndex();
-        final filename = '$nextIndex.webp';
-        await GithubService.uploadImage(filename, compressedBytes);
-
+        int? reservedIndex;
         try {
+          reservedIndex = await SupabaseService.reserveNextImageIndex();
+          final filename = '$reservedIndex.webp';
+          await GithubService.uploadImage(filename, compressedBytes);
+
           final decodedImage = img.decodeImage(compressedBytes);
-          if (decodedImage != null) {
-            await SupabaseService.upsertImageMetadata(
-              nextIndex,
-              decodedImage.width,
-              decodedImage.height,
-            );
+          if (decodedImage == null) {
+            throw Exception('Không thể đọc metadata ảnh sau khi nén.');
           }
+
+          await SupabaseService.upsertImageMetadata(
+            reservedIndex,
+            decodedImage.width,
+            decodedImage.height,
+          );
         } catch (e) {
-          debugPrint('Lỗi lưu Supabase: $e');
+          if (reservedIndex != null) {
+            await SupabaseService.deleteImageMetadata(reservedIndex);
+          }
+          rethrow;
         }
       }
 
