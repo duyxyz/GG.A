@@ -65,6 +65,16 @@ class SupabaseService {
     }
   }
 
+  static Future<int> reserveNextImageIndex() async {
+    if (!_initialized) {
+      throw Exception('Supabase has not been initialized.');
+    }
+    final result = await client.rpc('reserve_next_image_index');
+    if (result is int) return result;
+    if (result is num) return result.toInt();
+    throw Exception('Invalid index returned from Supabase RPC.');
+  }
+
   static Future<void> bulkUpsertImageMetadata(List<Map<String, dynamic>> dataList) async {
     if (!_initialized || dataList.isEmpty) return;
     try {

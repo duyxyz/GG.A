@@ -1,16 +1,17 @@
 import 'dart:io';
+
+import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+
 import '../services/github_service.dart';
 import '../services/supabase_service.dart';
 import '../utils/haptics.dart';
 import '../widgets/error_view.dart';
-import '../widgets/pulse_skeleton.dart';
 import '../widgets/expressive_loading_indicator.dart';
-import 'package:dotted_border/dotted_border.dart';
 
 class AddTab extends StatefulWidget {
   final List<Map<String, dynamic>> images;
@@ -43,7 +44,7 @@ class AddTabState extends State<AddTab> {
   Future<void> _pickImage() async {
     AppHaptics.lightImpact();
     try {
-      final List<XFile> images = await _picker.pickMultiImage();
+      final images = await _picker.pickMultiImage();
       if (images.isNotEmpty) {
         setState(() {
           _selectedImages.addAll(images);
@@ -62,11 +63,11 @@ class AddTabState extends State<AddTab> {
     AppHaptics.lightImpact();
     if (_selectedImages.isEmpty) return;
 
-    final bool? confirm = await showDialog<bool>(
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          title: Text('Đăng ${_selectedImages.length} ảnh ?'),
+          title: Text('Đăng ${_selectedImages.length} ảnh?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -89,42 +90,27 @@ class AddTabState extends State<AddTab> {
     });
 
     try {
-      List<Map<String, dynamic>> currentImages = List.from(widget.images);
-
       for (int i = 0; i < _selectedImages.length; i++) {
         final image = _selectedImages[i];
+        if (!mounted) return;
         setState(() {
           _uploadStatus = "Đang xử lý ${i + 1}/${_selectedImages.length}...";
         });
 
-        final Uint8List? compressedBytes =
-            await FlutterImageCompress.compressWithFile(
-              image.path,
-              minWidth: 1920,
-              minHeight: 1920,
-              quality: 80,
-              format: CompressFormat.webp,
-            );
+        final compressedBytes = await FlutterImageCompress.compressWithFile(
+          image.path,
+          minWidth: 1920,
+          minHeight: 1920,
+          quality: 80,
+          format: CompressFormat.webp,
+        );
 
         if (compressedBytes == null) continue;
 
-        int nextIndex = 1;
-        List<int> existingIndexes =
-            currentImages.map<int>((img) => img['index'] as int).toList()
-              ..sort();
-
-        for (int idx = 0; idx < existingIndexes.length; idx++) {
-          if (existingIndexes[idx] == nextIndex) {
-            nextIndex++;
-          } else if (existingIndexes[idx] > nextIndex) {
-            break;
-          }
-        }
-
+        final nextIndex = await SupabaseService.reserveNextImageIndex();
         final filename = '$nextIndex.webp';
         await GithubService.uploadImage(filename, compressedBytes);
 
-        // Calculate metadata and store in Supabase
         try {
           final decodedImage = img.decodeImage(compressedBytes);
           if (decodedImage != null) {
@@ -137,8 +123,6 @@ class AddTabState extends State<AddTab> {
         } catch (e) {
           debugPrint('Lỗi lưu Supabase: $e');
         }
-
-        currentImages.add({'index': nextIndex});
       }
 
       if (mounted) {
@@ -157,7 +141,9 @@ class AddTabState extends State<AddTab> {
         ).showSnackBar(SnackBar(content: Text('Lỗi tải lên: $e')));
       }
     } finally {
-      if (mounted) setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
@@ -188,7 +174,10 @@ class AddTabState extends State<AddTab> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          onPressed: (_selectedImages.isNotEmpty && !_isUploading) ? _clearSelection : null,
+          onPressed:
+              (_selectedImages.isNotEmpty && !_isUploading)
+                  ? _clearSelection
+                  : null,
           icon: const Icon(Icons.delete_sweep_rounded),
           tooltip: 'Xóa hết',
         ),
@@ -197,9 +186,12 @@ class AddTabState extends State<AddTab> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
-            color: (_selectedImages.isEmpty || _isUploading)
-                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
-                : null,
+            color:
+                (_selectedImages.isEmpty || _isUploading)
+                    ? Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.38)
+                    : null,
           ),
         ),
         centerTitle: true,
@@ -207,7 +199,10 @@ class AddTabState extends State<AddTab> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: FilledButton.tonal(
-              onPressed: (_selectedImages.isNotEmpty && !_isUploading) ? _uploadImage : null,
+              onPressed:
+                  (_selectedImages.isNotEmpty && !_isUploading)
+                      ? _uploadImage
+                      : null,
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
               ),
@@ -259,10 +254,11 @@ class AddTabState extends State<AddTab> {
                             padding: EdgeInsets.zero,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerHighest
-                                    .withValues(alpha: 0.3),
+                                color:
+                                    Theme.of(context)
+                                        .colorScheme
+                                        .surfaceContainerHighest
+                                        .withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Center(

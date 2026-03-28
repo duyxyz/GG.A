@@ -79,12 +79,12 @@ class _MainScreenState extends State<MainScreen> {
         if (!mounted) return;
         if (data.length != _images.length) {
           debugPrint(
-            "Phat hien thay doi so luong anh (${_images.length} -> ${data.length}), dang tai lai...",
+            "Phát hiện thay đổi số lượng ảnh (${_images.length} -> ${data.length}), đang tải lại...",
           );
           _loadData();
         } else {
           debugPrint(
-            "So luong anh khong doi (${data.length}), bo qua viec tai lai tu GitHub.",
+            "Số lượng ảnh không đổi (${data.length}), bỏ qua việc tải lại từ GitHub.",
           );
         }
       });
@@ -118,19 +118,19 @@ class _MainScreenState extends State<MainScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Cap nhat ung dung'),
-        content: Text('Da co phien ban moi ${updateData['tag_name']}'),
+        title: const Text('Cập nhật ứng dụng'),
+        content: Text('Đã có phiên bản mới ${updateData['tag_name']}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('De sau'),
+            child: const Text('Để sau'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
               startUpdateProcess(context, updateData);
             },
-            child: const Text('Cap nhat'),
+            child: const Text('Cập nhật'),
           ),
         ],
       ),
