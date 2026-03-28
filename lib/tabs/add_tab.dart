@@ -9,6 +9,7 @@ import '../services/supabase_service.dart';
 import '../utils/haptics.dart';
 import '../widgets/error_view.dart';
 import '../widgets/pulse_skeleton.dart';
+import '../widgets/expressive_loading_indicator.dart';
 import 'package:dotted_border/dotted_border.dart';
 
 class AddTab extends StatefulWidget {
@@ -333,7 +334,7 @@ class AddTabState extends State<AddTab> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const CircularProgressIndicator(),
+                        const ExpressiveLoadingIndicator(isContained: true),
                         const SizedBox(height: 16),
                         Text(
                           _uploadStatus,

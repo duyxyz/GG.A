@@ -9,6 +9,7 @@ import 'package:path/path.dart' as p;
 import '../utils/haptics.dart';
 import '../services/github_service.dart';
 import '../services/supabase_service.dart';
+import 'expressive_loading_indicator.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
   final String imageUrl;
@@ -402,7 +403,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
+                        ExpressiveLoadingIndicator(isContained: true),
                         SizedBox(height: 16),
                         Text('Đang lưu ảnh...'),
                       ],
@@ -421,7 +422,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
+                        ExpressiveLoadingIndicator(isContained: true),
                         SizedBox(height: 16),
                         Text('Đang xóa ảnh...'),
                       ],

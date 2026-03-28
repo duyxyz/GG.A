@@ -11,6 +11,7 @@ import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
 import '../utils/migrate_to_supabase.dart';
 import '../services/supabase_service.dart';
+import '../widgets/expressive_loading_indicator.dart';
 
 class SettingsTab extends StatefulWidget {
   final bool isSelected;
@@ -481,7 +482,7 @@ class _SettingsTabState extends State<SettingsTab> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => const Center(child: ExpressiveLoadingIndicator(isContained: true)),
     );
 
     final result = await MigrationUtility.migrateFromGitHub();
