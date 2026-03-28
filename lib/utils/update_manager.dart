@@ -13,7 +13,7 @@ Future<void> startUpdateProcess(
   if (!context.mounted) return;
 
   try {
-    debugPrint("Bắt đầu quy trình cập nhật...");
+    debugPrint("Bắt đầu quy trình cập nhật");
     final assets = updateData['assets'] as List<dynamic>;
     final bestAsset = await GithubService.findBestAsset(assets);
 
@@ -43,7 +43,7 @@ Future<void> startUpdateProcess(
       builder: (dialogCtx) => PopScope(
         canPop: false,
         child: AlertDialog(
-          title: const Text('Đang tải bản cập nhật...'),
+          title: const Text('Đang cập nhật'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

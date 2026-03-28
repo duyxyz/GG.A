@@ -404,10 +404,13 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                                 Expanded(
                                   child: FilledButton.tonalIcon(
                                      onPressed: () => _downloadImage(context),
-                                    icon: const Icon(Icons.download_rounded),
+                                    icon: const Icon(Icons.download_outlined),
                                     label: const Text('Tải xuống'),
                                     style: FilledButton.styleFrom(
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : null,
+                                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.blue.withOpacity(0.35)
+                                          : Colors.blue.withOpacity(0.15),
+                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.blue,
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 16,
                                       ),
@@ -416,22 +419,27 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: FilledButton.icon(
-                                     onPressed: () => _deleteImage(context),
-                                    icon: const Icon(Icons.delete_outline),
-                                    label: const Text('Xóa ảnh'),
+                                  child: FilledButton.tonalIcon(
+                                     onPressed: () {
+                                       Navigator.of(context).pop();
+                                       Future.delayed(
+                                         const Duration(milliseconds: 100),
+                                        () => _toggleFavorite(),
+                                      );
+                                    },
+                                    icon: Icon(
+                                      _isFavorite
+                                          ? Icons.favorite_rounded
+                                          : Icons.favorite_outline_rounded,
+                                    ),
+                                    label: Text(
+                                      _isFavorite ? 'Bỏ thích' : 'Yêu thích',
+                                    ),
                                     style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.red.withValues(
-                                        alpha: Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? 0.7
-                                            : 0.15,
-                                      ),
-                                      foregroundColor: Theme.of(context)
-                                                  .brightness ==
-                                              Brightness.dark
-                                          ? Colors.white
-                                          : Colors.red,
+                                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.pinkAccent.withOpacity(0.35)
+                                          : Colors.pinkAccent.withOpacity(0.15),
+                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.pinkAccent,
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 16,
                                       ),
@@ -447,24 +455,15 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                                   child: FilledButton.tonalIcon(
                                      onPressed: () {
                                        Navigator.of(context).pop();
-                                       // Add a small delay to avoid race condition with Sheet closing and Hero rebuild
-                                       Future.delayed(
-                                         const Duration(milliseconds: 100),
-                                        () => _toggleFavorite(),
-                                      );
-                                    },
-                                    icon: Icon(
-                                      _isFavorite
-                                          ? Icons.favorite_rounded
-                                          : Icons.favorite_outline_rounded,
-                                    ),
-                                    label: Text(
-                                      _isFavorite ? 'Bỏ thích' : 'Yêu thích',
-                                    ),
+                                       _showInfoDialog();
+                                     },
+                                    icon: const Icon(Icons.info_outline_rounded),
+                                    label: const Text('Thông tin'),
                                     style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          Colors.pink.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.15),
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.pink,
+                                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.grey.withOpacity(0.35)
+                                          : Colors.grey.withOpacity(0.15),
+                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[800],
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 16,
                                       ),
@@ -473,17 +472,17 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: FilledButton.tonalIcon(
-                                     onPressed: () {
-                                       Navigator.of(context).pop();
-                                       _showInfoDialog();
-                                     },
-                                    icon: const Icon(Icons.info_outline_rounded),
-                                    label: const Text('Thông tin'),
+                                  child: FilledButton.icon(
+                                     onPressed: () => _deleteImage(context),
+                                    icon: const Icon(Icons.delete_outline),
+                                    label: const Text('Xóa ảnh'),
                                     style: FilledButton.styleFrom(
-                                      backgroundColor:
-                                          Colors.grey.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.35 : 0.15),
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[800],
+                                      backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.red.withOpacity(0.7)
+                                          : Colors.red.withOpacity(0.15),
+                                      foregroundColor: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.white
+                                          : Colors.red,
                                       padding: const EdgeInsets.symmetric(
                                         vertical: 16,
                                       ),
