@@ -75,7 +75,7 @@ class _ImageGridItemState extends State<ImageGridItem>
         Navigator.of(context).push(
           PageRouteBuilder(
             opaque: false,
-            barrierColor: Theme.of(context).scaffoldBackgroundColor,
+            barrierColor: Colors.transparent,
             pageBuilder: (context, animation, secondaryAnimation) {
               return FullScreenImageViewer(
                 imageUrl: widget.imageUrl,
