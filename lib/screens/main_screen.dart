@@ -1,15 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+
+import '../services/favorite_service.dart';
 import '../services/github_service.dart';
 import '../services/supabase_service.dart';
-import 'dart:async';
+import '../tabs/add_tab.dart';
+import '../tabs/favorites_tab.dart';
+import '../tabs/home_tab.dart';
+import '../tabs/settings_tab.dart';
 import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
-import '../tabs/home_tab.dart';
-import '../tabs/favorites_tab.dart';
-import '../tabs/add_tab.dart';
-import '../tabs/settings_tab.dart';
-import '../services/favorite_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -43,74 +45,67 @@ class _MainScreenState extends State<MainScreen> {
     _loadData();
     _setupRealtimeMetadata();
     _checkForUpdateSilent();
-    cleanupUpdateFiles(); // Dọn dẹp file APK cũ
+    cleanupUpdateFiles();
   }
 
   void _setupRealtimeMetadata() {
     _metadataSubscription = SupabaseService.metadataStream().listen((data) {
-      if (data.isNotEmpty && mounted) {
-        bool hasChanges = false;
+      if (!mounted) return;
 
-        // 1. Cập nhật tỷ lệ ảnh cũ ngay tại chỗ nếu đã có dữ liệu GitHub
-        if (_images.isNotEmpty) {
-          final Map<int, double> newRatios = {
-            for (var item in data)
-              item['image_index'] as int: (item['aspect_ratio'] as num)
-                  .toDouble(),
-          };
+      var hasChanges = false;
+      if (_images.isNotEmpty && data.isNotEmpty) {
+        final newRatios = <int, double>{
+          for (final item in data)
+            item['image_index'] as int: (item['aspect_ratio'] as num).toDouble(),
+        };
 
-          for (var i = 0; i < _images.length; i++) {
-            final idx = _images[i]['index'];
-            if (idx != null && newRatios.containsKey(idx)) {
-              if (_images[i]['aspect_ratio'] != newRatios[idx]) {
-                _images[i]['aspect_ratio'] = newRatios[idx];
-                hasChanges = true;
-              }
+        for (var i = 0; i < _images.length; i++) {
+          final idx = _images[i]['index'];
+          if (idx != null && newRatios.containsKey(idx)) {
+            if (_images[i]['aspect_ratio'] != newRatios[idx]) {
+              _images[i]['aspect_ratio'] = newRatios[idx];
+              hasChanges = true;
             }
           }
         }
-
-        // 2. Nếu có thay đổi về tỷ lệ, cập nhật UI ngay lập tức (không đợi GitHub)
-        if (hasChanges) {
-          setState(() {});
-        }
-
-        // 3. Chỉ tải lại từ GitHub nếu số lượng ảnh thay đổi hoặc sau khi hết debounce
-        // Điều này xử lý trường hợp có ảnh mới được thêm vào hoặc bị xóa
-        _debounceTimer?.cancel();
-        _debounceTimer = Timer(const Duration(seconds: 3), () {
-          if (mounted) {
-            // Chỉ tải lại từ GitHub nếu số lượng ảnh thực sự thay đổi
-            // (Xử lý trường hợp thêm/xóa ảnh)
-            if (data.length != _images.length) {
-              debugPrint(
-                "Phát hiện thay đổi số lượng ảnh (${_images.length} -> ${data.length}), đang tải lại...",
-              );
-              _loadData();
-            } else {
-              debugPrint(
-                "Số lượng ảnh không đổi (${data.length}), bỏ qua việc tải lại từ GitHub.",
-              );
-            }
-          }
-        });
       }
+
+      if (hasChanges) {
+        setState(() {});
+      }
+
+      _debounceTimer?.cancel();
+      _debounceTimer = Timer(const Duration(seconds: 3), () {
+        if (!mounted) return;
+        if (data.length != _images.length) {
+          debugPrint(
+            "Phat hien thay doi so luong anh (${_images.length} -> ${data.length}), dang tai lai...",
+          );
+          _loadData();
+        } else {
+          debugPrint(
+            "So luong anh khong doi (${data.length}), bo qua viec tai lai tu GitHub.",
+          );
+        }
+      });
     });
   }
 
   Future<void> _checkForUpdateSilent() async {
     await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+
     final result = await GithubService.checkUpdate();
+    if (!mounted) return;
+
     if (result['success'] == true) {
       final updateData = result['data'];
-      final latestVersion = updateData['tag_name'].toString().replaceAll(
-        'v',
-        '',
-      );
+      final latestVersion = updateData['tag_name'].toString().replaceAll('v', '');
       final info = await PackageInfo.fromPlatform();
-      final currentVersion = info.version;
+      if (!mounted) return;
 
-      if (latestVersion != currentVersion && mounted) {
+      final currentVersion = info.version;
+      if (latestVersion != currentVersion) {
         _showUpdateDialog(context, updateData);
       }
     }
@@ -123,19 +118,19 @@ class _MainScreenState extends State<MainScreen> {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
-        title: const Text('Cập nhật ứng dụng'),
-        content: Text('Đã có phiên bản mới ${updateData['tag_name']}'),
+        title: const Text('Cap nhat ung dung'),
+        content: Text('Da co phien ban moi ${updateData['tag_name']}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Để sau'),
+            child: const Text('De sau'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
               startUpdateProcess(context, updateData);
             },
-            child: const Text('Cập nhật'),
+            child: const Text('Cap nhat'),
           ),
         ],
       ),
@@ -143,17 +138,22 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _error = "";
     });
+
     try {
       final images = await GithubService.fetchImages();
+      if (!mounted) return;
       setState(() {
         _images = images;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -164,42 +164,15 @@ class _MainScreenState extends State<MainScreen> {
   void _handleFullReload() {
     AppHaptics.heavyImpact();
     setState(() {
-      _selectedIndex = 0; // Quay về trang chủ
-      _images = []; // Xóa dữ liệu cũ để hiện loading
+      _selectedIndex = 0;
+      _images = [];
     });
 
-    // Cuộn lên đầu trang
     if (_homeScrollController.hasClients) {
       _homeScrollController.jumpTo(0);
     }
 
     _loadData();
-  }
-
-  void _showRefreshDialog() {
-    AppHaptics.mediumImpact();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Làm mới trang ?'),
-        content: const Text(
-          'Bạn có muốn tải lại danh sách ảnh từ máy chủ không?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _handleFullReload();
-            },
-            child: const Text('Đồng ý'),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildNavItem(IconData activeIcon, IconData icon, int index) {
@@ -287,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
           child: BottomAppBar(
             padding: EdgeInsets.zero,
             elevation: 0,
-            height: 48.0, // Bring it back down to the original 52 height
+            height: 48.0,
             color: Colors.transparent,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,

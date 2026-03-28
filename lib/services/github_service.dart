@@ -21,10 +21,15 @@ class GithubService {
     'Đang kiểm tra...',
   );
 
-  static Map<String, String> get headers => {
-    'Authorization': 'token $token',
-    'Accept': 'application/vnd.github.v3+json',
-  };
+  static Map<String, String> get headers {
+    final result = <String, String>{
+      'Accept': 'application/vnd.github.v3+json',
+    };
+    if (token.isNotEmpty) {
+      result['Authorization'] = 'token $token';
+    }
+    return result;
+  }
 
   static void _updateRateLimit(http.Response response) {
     if (response.headers.containsKey('x-ratelimit-remaining')) {
@@ -48,7 +53,9 @@ class GithubService {
       }
     } catch (_) {}
 
-    final response = await http.get(Uri.parse(baseUrl), headers: headers);
+    final response = await http
+        .get(Uri.parse(baseUrl), headers: headers)
+        .timeout(const Duration(seconds: 20));
     _updateRateLimit(response);
 
     if (response.statusCode == 200) {
@@ -79,14 +86,16 @@ class GithubService {
 
   static Future<void> uploadImage(String filename, Uint8List fileBytes) async {
     final base64Image = base64Encode(fileBytes);
-    final response = await http.put(
-      Uri.parse('$baseUrl/$filename'),
-      headers: headers,
-      body: jsonEncode({
-        'message': 'Upload $filename (Android App)',
-        'content': base64Image,
-      }),
-    );
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl/$filename'),
+          headers: headers,
+          body: jsonEncode({
+            'message': 'Upload $filename (Android App)',
+            'content': base64Image,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
     _updateRateLimit(response);
 
     if (response.statusCode != 201 && response.statusCode != 200) {
@@ -95,11 +104,13 @@ class GithubService {
   }
 
   static Future<void> deleteImage(String path, String sha) async {
-    final response = await http.delete(
-      Uri.parse('$baseUrl/$path'),
-      headers: headers,
-      body: jsonEncode({'message': 'Delete $path (Android App)', 'sha': sha}),
-    );
+    final response = await http
+        .delete(
+          Uri.parse('$baseUrl/$path'),
+          headers: headers,
+          body: jsonEncode({'message': 'Delete $path (Android App)', 'sha': sha}),
+        )
+        .timeout(const Duration(seconds: 30));
     _updateRateLimit(response);
 
     if (response.statusCode != 200) {
@@ -133,12 +144,14 @@ class GithubService {
 
   static Future<Map<String, dynamic>> checkUpdate() async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          'https://api.github.com/repos/$owner/$appRepo/releases/latest',
-        ),
-        headers: headers,
-      );
+      final response = await http
+          .get(
+            Uri.parse(
+              'https://api.github.com/repos/$owner/$appRepo/releases/latest',
+            ),
+            headers: headers,
+          )
+          .timeout(const Duration(seconds: 20));
       if (response.statusCode == 200) {
         return {'success': true, 'data': json.decode(response.body)};
       } else {

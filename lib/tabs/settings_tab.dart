@@ -413,18 +413,13 @@ class _SettingsTabState extends State<SettingsTab> {
       onTap: () async {
         AppHaptics.mediumImpact();
         await DefaultCacheManager().emptyCache();
-        final dirs = [
-          await getTemporaryDirectory(),
-          await getApplicationSupportDirectory(),
-        ];
-        for (final dir in dirs) {
-          if (dir.existsSync()) {
-            for (final entity in dir.listSync(recursive: true)) {
-              if (entity is File) {
-                try {
-                  await entity.delete();
-                } catch (_) {}
-              }
+        final tempDir = await getTemporaryDirectory();
+        if (tempDir.existsSync()) {
+          for (final entity in tempDir.listSync(recursive: true)) {
+            if (entity is File) {
+              try {
+                await entity.delete();
+              } catch (_) {}
             }
           }
         }
