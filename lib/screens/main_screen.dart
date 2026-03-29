@@ -1,11 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-
-import '../services/favorite_service.dart';
-import '../services/github_service.dart';
-import '../services/supabase_service.dart';
+import '../main.dart';
 import '../tabs/add_tab.dart';
 import '../tabs/favorites_tab.dart';
 import '../tabs/home_tab.dart';
@@ -22,104 +17,39 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  List<Map<String, dynamic>> _images = [];
-  final GlobalKey<AddTabState> _addTabKey = GlobalKey<AddTabState>();
-  bool _isLoading = true;
-  String _error = "";
   final ScrollController _homeScrollController = ScrollController();
-  StreamSubscription? _metadataSubscription;
-  Timer? _debounceTimer;
-
-  @override
-  void dispose() {
-    _homeScrollController.dispose();
-    _metadataSubscription?.cancel();
-    _debounceTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   void initState() {
     super.initState();
-    FavoriteService.init();
-    _loadData();
-    _setupRealtimeMetadata();
+    // Initialize data through ViewModels
+    AppDependencies.instance.homeViewModel.loadImages();
     _checkForUpdateSilent();
     cleanupUpdateFiles();
   }
 
-  void _setupRealtimeMetadata() {
-    _metadataSubscription = SupabaseService.metadataStream().listen((data) {
-      if (!mounted) return;
-
-      var hasChanges = false;
-      if (_images.isNotEmpty && data.isNotEmpty) {
-        final newRatios = <int, double>{
-          for (final item in data)
-            item['image_index'] as int: (item['aspect_ratio'] as num).toDouble(),
-        };
-
-        for (var i = 0; i < _images.length; i++) {
-          final idx = _images[i]['index'];
-          if (idx != null && newRatios.containsKey(idx)) {
-            if (_images[i]['aspect_ratio'] != newRatios[idx]) {
-              _images[i]['aspect_ratio'] = newRatios[idx];
-              hasChanges = true;
-            }
-          }
-        }
-      }
-
-      if (hasChanges) {
-        setState(() {});
-      }
-
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(seconds: 3), () {
-        if (!mounted) return;
-        if (data.length != _images.length || hasChanges) {
-          debugPrint(
-            "Phát hiện thay đổi dữ liệu hoặc số lượng ảnh (${_images.length} -> ${data.length}), đang tải lại...",
-          );
-          _loadData();
-        } else {
-          debugPrint(
-            "Không có thay đổi quan trọng (${data.length} ảnh), bỏ qua việc tải lại từ GitHub.",
-          );
-        }
-      });
-    });
+  @override
+  void dispose() {
+    _homeScrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkForUpdateSilent() async {
-    await Future.delayed(const Duration(seconds: 2));
+    final updateVM = AppDependencies.instance.updateViewModel;
+    await updateVM.checkForUpdates();
     if (!mounted) return;
 
-    final result = await GithubService.checkUpdate();
-    if (!mounted) return;
-
-    if (result['success'] == true) {
-      final updateData = result['data'];
-      final latestVersion = updateData['tag_name'].toString().replaceAll('v', '');
-      final info = await PackageInfo.fromPlatform();
-      if (!mounted) return;
-
-      final currentVersion = info.version;
-      if (latestVersion != currentVersion) {
-        _showUpdateDialog(context, updateData);
-      }
+    if (updateVM.latestRelease != null) {
+      _showUpdateDialog(context, updateVM.latestRelease!);
     }
   }
 
-  void _showUpdateDialog(
-    BuildContext context,
-    Map<String, dynamic> updateData,
-  ) {
+  void _showUpdateDialog(BuildContext context, dynamic release) {
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
         title: const Text('Cập nhật ứng dụng'),
-        content: Text('Đã có phiên bản mới ${updateData['tag_name']}'),
+        content: Text('Đã có phiên bản mới ${release.tagName}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogCtx),
@@ -128,51 +58,13 @@ class _MainScreenState extends State<MainScreen> {
           FilledButton(
             onPressed: () {
               Navigator.pop(dialogCtx);
-              startUpdateProcess(context, updateData);
+              startUpdateProcess(context, release);
             },
             child: const Text('Cập nhật'),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _loadData() async {
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = "";
-    });
-
-    try {
-      final images = await GithubService.fetchImages();
-      if (!mounted) return;
-      setState(() {
-        _images = images;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = e.toString();
-        _isLoading = false;
-      });
-    }
-  }
-
-  void _handleFullReload() {
-    AppHaptics.heavyImpact();
-    setState(() {
-      _selectedIndex = 0;
-      _images = [];
-    });
-
-    if (_homeScrollController.hasClients) {
-      _homeScrollController.jumpTo(0);
-    }
-
-    _loadData();
   }
 
   Widget _buildNavItem(IconData activeIcon, IconData icon, int index) {
@@ -209,6 +101,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final homeVM = AppDependencies.instance.homeViewModel;
+
     return PopScope(
       canPop: _selectedIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
@@ -221,69 +115,58 @@ class _MainScreenState extends State<MainScreen> {
       },
       child: Scaffold(
         body: SafeArea(
-          child: IndexedStack(
-            index: _selectedIndex,
-            children: [
-              HomeTab(
-                images: _images,
-                isLoading: _isLoading,
-                error: _error,
-                onRefresh: _loadData,
-                scrollController: _homeScrollController,
-              ),
-              FavoritesTab(
-                allImages: _images,
-                isLoading: _isLoading,
-              ),
-              AddTab(
-                key: _addTabKey,
-                images: _images,
-                isLoading: _isLoading,
-                error: _error,
-                onRefresh: _loadData,
-              ),
-              SettingsTab(isSelected: _selectedIndex == 3),
-            ],
+          child: ListenableBuilder(
+            listenable: homeVM,
+            builder: (context, _) {
+              return IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  HomeTab(
+                    viewModel: homeVM,
+                    scrollController: _homeScrollController,
+                  ),
+                  FavoritesTab(
+                    allImages: homeVM.images,
+                    isLoading: homeVM.isLoading,
+                  ),
+                  AddTab(
+                    viewModel: homeVM,
+                  ),
+                  SettingsTab(isSelected: _selectedIndex == 3),
+                ],
+              );
+            },
           ),
         ),
-        extendBody: false,
-        bottomNavigationBar: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface,
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
-                width: 1.0,
-              ),
-            ),
+        bottomNavigationBar: _buildBottomNav(),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
+            width: 1.0,
           ),
-          child: BottomAppBar(
-            padding: EdgeInsets.zero,
-            elevation: 0,
-            height: 48.0,
-            color: Colors.transparent,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.home_rounded, Icons.home_outlined, 0),
-                _buildNavItem(
-                  Icons.favorite_rounded,
-                  Icons.favorite_outline_rounded,
-                  1,
-                ),
-                _buildNavItem(
-                  Icons.add_circle_rounded,
-                  Icons.add_circle_outline,
-                  2,
-                ),
-                _buildNavItem(
-                  Icons.settings_rounded,
-                  Icons.settings_outlined,
-                  3,
-                ),
-              ],
-            ),
-          ),
+        ),
+      ),
+      child: BottomAppBar(
+        padding: EdgeInsets.zero,
+        elevation: 0,
+        height: 48.0,
+        color: Colors.transparent,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildNavItem(Icons.home_rounded, Icons.home_outlined, 0),
+            _buildNavItem(Icons.favorite_rounded, Icons.favorite_outline_rounded, 1),
+            _buildNavItem(Icons.add_circle_rounded, Icons.add_circle_outline, 2),
+            _buildNavItem(Icons.settings_rounded, Icons.settings_outlined, 3),
+          ],
         ),
       ),
     );

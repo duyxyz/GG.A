@@ -1,30 +1,21 @@
 import 'dart:io';
-
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
-import '../services/github_service.dart';
-import '../services/supabase_service.dart';
+import '../main.dart';
+import '../logic/viewmodels/home_view_model.dart';
 import '../utils/haptics.dart';
 import '../widgets/error_view.dart';
 import '../widgets/expressive_loading_indicator.dart';
 
 class AddTab extends StatefulWidget {
-  final List<Map<String, dynamic>> images;
-  final bool isLoading;
-  final String error;
-  final Future<void> Function() onRefresh;
+  final HomeViewModel viewModel;
 
   const AddTab({
     super.key,
-    required this.images,
-    required this.isLoading,
-    required this.error,
-    required this.onRefresh,
+    required this.viewModel,
   });
 
   @override
@@ -32,16 +23,12 @@ class AddTab extends StatefulWidget {
 }
 
 class AddTabState extends State<AddTab> {
-  Future<void> pickImage() async {
-    await _pickImage();
-  }
-
-  bool _isUploading = false;
+  bool _isLocalLoading = false;
   String _uploadStatus = "";
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _selectedImages = [];
 
-  Future<void> _pickImage() async {
+  Future<void> pickImage() async {
     AppHaptics.lightImpact();
     try {
       final images = await _picker.pickMultiImage();
@@ -52,40 +39,30 @@ class AddTabState extends State<AddTab> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi chọn ảnh: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi chọn ảnh: $e')));
       }
     }
   }
 
-  Future<void> _uploadImage() async {
+  Future<void> _uploadImages() async {
     AppHaptics.lightImpact();
     if (_selectedImages.isEmpty) return;
 
     final confirm = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Đăng ${_selectedImages.length} ảnh?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Hủy'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Đăng'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => AlertDialog(
+        title: Text('Đăng ${_selectedImages.length} ảnh?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Hủy')),
+          FilledButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Đăng')),
+        ],
+      ),
     );
 
     if (confirm != true) return;
 
     setState(() {
-      _isUploading = true;
+      _isLocalLoading = true;
       _uploadStatus = "Bắt đầu tải lên...";
     });
 
@@ -107,27 +84,16 @@ class AddTabState extends State<AddTab> {
 
         if (compressedBytes == null) continue;
 
-        int? reservedIndex;
-        try {
-          reservedIndex = await SupabaseService.reserveNextImageIndex();
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final filename = '${reservedIndex}_$timestamp.webp';
-          await GithubService.uploadImage(filename, compressedBytes);
+        final decodedImage = await decodeImageFromList(compressedBytes);
+        final filename = '${DateTime.now().millisecondsSinceEpoch}.webp';
 
-          final decodedImage = await decodeImageFromList(compressedBytes);
-
-          await SupabaseService.upsertImageMetadata(
-            reservedIndex,
-            decodedImage.width,
-            decodedImage.height,
-          );
-          decodedImage.dispose();
-        } catch (e) {
-          if (reservedIndex != null) {
-            await SupabaseService.deleteImageMetadata(reservedIndex);
-          }
-          rethrow;
-        }
+        await widget.viewModel.uploadImage(
+          filename,
+          compressedBytes,
+          decodedImage.width,
+          decodedImage.height,
+        );
+        decodedImage.dispose();
       }
 
       if (mounted) {
@@ -138,16 +104,13 @@ class AddTabState extends State<AddTab> {
           _selectedImages.clear();
         });
       }
-      await widget.onRefresh();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi tải lên: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải lên: $e')));
       }
     } finally {
       if (mounted) {
-        setState(() => _isUploading = false);
+        setState(() => _isLocalLoading = false);
       }
     }
   }
@@ -168,10 +131,10 @@ class AddTabState extends State<AddTab> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.error.isNotEmpty) {
+    if (widget.viewModel.error.isNotEmpty) {
       return ErrorView(
-        message: 'Lỗi nạp dữ liệu: ${widget.error}',
-        onRetry: widget.onRefresh,
+        message: 'Lỗi nạp dữ liệu: ${widget.viewModel.error}',
+        onRetry: widget.viewModel.loadImages,
         isFullScreen: false,
       );
     }
@@ -179,10 +142,7 @@ class AddTabState extends State<AddTab> {
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
-          onPressed:
-              (_selectedImages.isNotEmpty && !_isUploading)
-                  ? _clearSelection
-                  : null,
+          onPressed: (_selectedImages.isNotEmpty && !_isLocalLoading) ? _clearSelection : null,
           icon: const Icon(Icons.delete_sweep_rounded),
           tooltip: 'Xóa hết',
         ),
@@ -191,12 +151,9 @@ class AddTabState extends State<AddTab> {
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 18,
-            color:
-                (_selectedImages.isEmpty || _isUploading)
-                    ? Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withValues(alpha: 0.38)
-                    : null,
+            color: (_selectedImages.isEmpty || _isLocalLoading)
+                ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.38)
+                : null,
           ),
         ),
         centerTitle: true,
@@ -204,26 +161,15 @@ class AddTabState extends State<AddTab> {
           Padding(
             padding: const EdgeInsets.only(right: 8.0),
             child: FilledButton.tonal(
-              onPressed:
-                  (_selectedImages.isNotEmpty && !_isUploading)
-                      ? _uploadImage
-                      : null,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-              ),
-              child: const Text(
-                'Tải lên',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              onPressed: (_selectedImages.isNotEmpty && !_isLocalLoading) ? _uploadImages : null,
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16)),
+              child: const Text('Tải lên', style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
-            height: 1.0,
-          ),
+          child: Container(color: Theme.of(context).dividerColor.withValues(alpha: 0.2), height: 1.0),
         ),
       ),
       body: Stack(
@@ -231,27 +177,24 @@ class AddTabState extends State<AddTab> {
           SafeArea(
             child: Column(
               children: [
-                if (widget.isLoading) const LinearProgressIndicator(),
+                if (widget.viewModel.isLoading || _isLocalLoading) const LinearProgressIndicator(),
                 Expanded(
                   child: GridView.builder(
                     physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.all(16),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                        ),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                    ),
                     itemCount: _selectedImages.length + 1,
                     itemBuilder: (context, index) {
                       if (index == _selectedImages.length) {
                         return InkWell(
-                          onTap: _pickImage,
+                          onTap: pickImage,
                           borderRadius: BorderRadius.circular(16),
                           child: DottedBorder(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                             strokeWidth: 2,
                             dashPattern: const [6, 4],
                             borderType: BorderType.RRect,
@@ -259,19 +202,11 @@ class AddTabState extends State<AddTab> {
                             padding: EdgeInsets.zero,
                             child: Container(
                               decoration: BoxDecoration(
-                                color:
-                                    Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHighest
-                                        .withValues(alpha: 0.3),
+                                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Center(
-                                child: Icon(
-                                  Icons.add_rounded,
-                                  size: 32,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
+                                child: Icon(Icons.add_rounded, size: 32, color: Theme.of(context).colorScheme.primary),
                               ),
                             ),
                           ),
@@ -283,18 +218,11 @@ class AddTabState extends State<AddTab> {
                             child: Container(
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(
-                                  color: Theme.of(
-                                    context,
-                                  ).dividerColor.withValues(alpha: 0.1),
-                                ),
+                                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.file(
-                                  File(_selectedImages[index].path),
-                                  fit: BoxFit.cover,
-                                ),
+                                child: Image.file(File(_selectedImages[index].path), fit: BoxFit.cover),
                               ),
                             ),
                           ),
@@ -305,15 +233,8 @@ class AddTabState extends State<AddTab> {
                               onTap: () => _removeImage(index),
                               child: Container(
                                 padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.close_rounded,
-                                  size: 16,
-                                  color: Colors.white,
-                                ),
+                                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), shape: BoxShape.circle),
+                                child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
                               ),
                             ),
                           ),
@@ -325,7 +246,7 @@ class AddTabState extends State<AddTab> {
               ],
             ),
           ),
-          if (_isUploading)
+          if (_isLocalLoading)
             Container(
               color: Colors.black45,
               child: Center(
@@ -337,11 +258,7 @@ class AddTabState extends State<AddTab> {
                       children: [
                         const ExpressiveLoadingIndicator(isContained: true),
                         const SizedBox(height: 16),
-                        Text(
-                          _uploadStatus,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
+                        Text(_uploadStatus, style: const TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                       ],
                     ),
                   ),

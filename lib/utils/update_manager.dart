@@ -4,32 +4,31 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:open_filex/open_filex.dart';
-import '../services/github_service.dart';
+import '../main.dart';
+import '../data/models/app_release.dart';
 
 Future<void> startUpdateProcess(
   BuildContext context,
-  Map<String, dynamic> updateData,
+  AppRelease release,
 ) async {
   if (!context.mounted) return;
 
   try {
-    debugPrint("Bắt đầu quy trình cập nhật");
-    final assets = updateData['assets'] as List<dynamic>;
-    final bestAsset = await GithubService.findBestAsset(assets);
+    debugPrint("Bắt đầu quy trình cập nhật: ${release.tagName}");
+    
+    final bestAsset = await AppDependencies.instance.updateViewModel.findBestAssetFromRelease(release);
 
     if (bestAsset == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không tìm thấy bản APK phù hợp cho thiết bị này!'),
-          ),
+          const SnackBar(content: Text('Không tìm thấy bản APK phù hợp cho thiết bị này!')),
         );
       }
       return;
     }
 
-    final downloadUrl = bestAsset['browser_download_url'] as String;
-    final fileName = bestAsset['name'] as String;
+    final downloadUrl = bestAsset.downloadUrl;
+    final fileName = bestAsset.name;
 
     debugPrint("Đã tìm thấy asset: $fileName");
 
@@ -47,11 +46,7 @@ Future<void> startUpdateProcess(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                fileName,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
+              Text(fileName, style: const TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
               const SizedBox(height: 20),
               ValueListenableBuilder<double>(
                 valueListenable: progressNotifier,
@@ -60,10 +55,7 @@ Future<void> startUpdateProcess(
                     children: [
                       LinearProgressIndicator(value: value),
                       const SizedBox(height: 8),
-                      Text(
-                        '${(value * 100).toStringAsFixed(0)}%',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      Text('${(value * 100).toStringAsFixed(0)}%', style: const TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   );
                 },
@@ -78,59 +70,40 @@ Future<void> startUpdateProcess(
     final savePath = p.join(tempDir.path, fileName);
 
     final oldFile = File(savePath);
-    if (await oldFile.exists()) {
-      await oldFile.delete();
-    }
+    if (await oldFile.exists()) await oldFile.delete();
 
-    final dio = Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(minutes: 5),
-      ),
-    );
-
+    final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(minutes: 5)));
     await dio.download(
       downloadUrl,
       savePath,
       onReceiveProgress: (received, total) {
-        if (total != -1) {
-          progressNotifier.value = received / total;
-        }
+        if (total != -1) progressNotifier.value = received / total;
       },
     );
 
     debugPrint("Tải xong: $savePath");
 
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
+    if (context.mounted) Navigator.of(context, rootNavigator: true).pop();
 
     final result = await OpenFilex.open(savePath);
     if (result.type != ResultType.done) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi mở APK: ${result.message}')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi mở APK: ${result.message}')));
       }
     }
   } catch (e) {
     debugPrint("Lỗi cập nhật: $e");
     if (context.mounted) {
-      if (Navigator.canPop(context))
-        Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      if (Navigator.canPop(context)) Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
     }
   }
 }
 
-/// Xoá bỏ các file APK thừa trong bộ nhớ tạm để tiết kiệm dung lượng
 Future<void> cleanupUpdateFiles() async {
   try {
     final tempDir = await getTemporaryDirectory();
     if (!tempDir.existsSync()) return;
-
     final List<FileSystemEntity> files = tempDir.listSync();
     for (final file in files) {
       if (file is File && file.path.endsWith('.apk')) {

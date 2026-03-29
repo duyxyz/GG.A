@@ -1,20 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'pulse_skeleton.dart';
+import '../data/models/gallery_image.dart';
 import '../utils/haptics.dart';
 import 'full_screen_viewer.dart';
 
 class ImageGridItem extends StatefulWidget {
-  final String imageUrl;
-  final double aspectRatio;
-  final Map<String, dynamic>? imageMap;
+  final GalleryImage image;
   final String? heroTag;
 
   const ImageGridItem({
     super.key,
-    required this.imageUrl,
-    required this.aspectRatio,
-    this.imageMap,
+    required this.image,
     this.heroTag,
   });
 
@@ -78,10 +75,8 @@ class _ImageGridItemState extends State<ImageGridItem>
             barrierColor: Colors.transparent,
             pageBuilder: (context, animation, secondaryAnimation) {
               return FullScreenImageViewer(
-                imageUrl: widget.imageUrl,
-                aspectRatio: widget.aspectRatio,
-                imageMap: widget.imageMap,
-                heroTag: widget.heroTag ?? widget.imageUrl,
+                image: widget.image,
+                heroTag: widget.heroTag ?? widget.image.downloadUrl,
               );
             },
             transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -92,13 +87,11 @@ class _ImageGridItemState extends State<ImageGridItem>
       },
       child: ClipRRect(
         child: AspectRatio(
-          aspectRatio: widget.aspectRatio,
+          aspectRatio: widget.image.aspectRatio,
           child: Hero(
-            tag: widget.heroTag ?? widget.imageUrl,
+            tag: widget.heroTag ?? widget.image.downloadUrl,
             child: CachedNetworkImage(
-              imageUrl: widget.imageMap != null && widget.imageMap!['sha'] != null
-                  ? '${widget.imageUrl}?v=${widget.imageMap!['sha']}'
-                  : widget.imageUrl,
+              imageUrl: '${widget.image.downloadUrl}?v=${widget.image.sha}',
               fit: BoxFit.cover,
               fadeInDuration: const Duration(milliseconds: 300),
               fadeOutDuration: const Duration(milliseconds: 300),

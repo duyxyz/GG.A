@@ -1,16 +1,13 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../main.dart';
-import '../services/github_service.dart';
 import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
 import '../utils/migrate_to_supabase.dart';
-import '../services/supabase_service.dart';
 import '../widgets/expressive_loading_indicator.dart';
 
 class SettingsTab extends StatefulWidget {
@@ -51,10 +48,7 @@ class _SettingsTabState extends State<SettingsTab> {
       for (final dir in dirs) {
         if (dir.existsSync()) {
           try {
-            await for (final file in dir.list(
-              recursive: true,
-              followLinks: false,
-            )) {
+            await for (final file in dir.list(recursive: true, followLinks: false)) {
               if (file is File) {
                 try {
                   totalSize += await file.length();
@@ -79,69 +73,10 @@ class _SettingsTabState extends State<SettingsTab> {
     }
   }
 
-  Future<void> _manualUpdateCheck(
-    BuildContext context,
-    String currentVersion,
-  ) async {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đang kiểm tra bản cập nhật mới...'),
-        duration: Duration(seconds: 1),
-      ),
-    );
-
-    final result = await GithubService.checkUpdate();
-
-    if (!result['success']) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể kiểm tra: ${result['error']}')),
-      );
-      return;
-    }
-
-    final updateData = result['data'];
-    final latestVersion = updateData['tag_name'].toString().replaceAll('v', '');
-
-    if (!mounted) return;
-
-    if (latestVersion != currentVersion) {
-      _showUpdateDialog(context, updateData);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bạn đang sử dụng phiên bản mới nhất!')),
-      );
-    }
-  }
-
-  void _showUpdateDialog(
-    BuildContext context,
-    Map<String, dynamic> updateData,
-  ) {
-    showDialog(
-      context: context,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Cập nhật ứng dụng'),
-        content: Text('Đã phiên bản mới ${updateData['tag_name']}'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Để sau'),
-          ),
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(dialogCtx);
-              startUpdateProcess(context, updateData);
-            },
-            child: const Text('Cập nhật'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final config = AppDependencies.instance.configViewModel;
+
     return Theme(
       data: Theme.of(context).copyWith(
         listTileTheme: const ListTileThemeData(
@@ -150,66 +85,72 @@ class _SettingsTabState extends State<SettingsTab> {
           contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         ),
       ),
-      child: ListView(
-        physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        children: [
-          _buildSectionCard(
-            title: 'Giao diện & Hiển thị',
-            children: [
-              _buildThemeModeTile(context),
-              const Divider(height: 1, indent: 48),
-              _buildThemeColorTile(context),
-              const Divider(height: 1, indent: 48),
-              _buildGridColumnsTile(context),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          _buildSectionCard(
-            title: 'Hệ thống & Trải nghiệm',
-            children: [
-              _buildSwitchTile(
-                title: 'Phản hồi rung',
-                icon: Icons.vibration_rounded,
-                notifier: MyApp.hapticNotifier,
-                onChanged: (v) async {
-                  MyApp.hapticNotifier.value = v;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setBool('hapticsEnabled', v);
-                  if (v) AppHaptics.lightImpact();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          _buildSectionCard(
-            title: 'Thông tin & Dọn dẹp',
-            children: [
-              _buildApiLimitTile(context),
-              const Divider(height: 1, indent: 48),
-              _buildVersionTile(context),
-              const Divider(height: 1, indent: 48),
-              _buildCacheTile(context),
-              const Divider(height: 1, indent: 48),
-              ListTile(
-                leading: const Icon(Icons.aspect_ratio_rounded),
-                title: const Text('Đồng bộ kích thước ảnh'),
-                onTap: () => _handleSyncCommand(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-        ],
+      child: ListenableBuilder(
+        listenable: config,
+        builder: (context, _) => ListView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          children: [
+            _buildSectionCard(
+              title: 'Giao diện & Hiển thị',
+              children: [
+                _buildThemeModeTile(context, config),
+                const Divider(height: 1, indent: 48),
+                _buildThemeColorTile(context, config),
+                const Divider(height: 1, indent: 48),
+                _buildGridColumnsTile(context, config),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildSectionCard(
+              title: 'Hệ thống & Trải nghiệm',
+              children: [
+                SwitchListTile(
+                  title: const Text('Phản hồi rung', style: TextStyle(fontSize: 14)),
+                  secondary: const Icon(Icons.vibration_rounded),
+                  value: config.hapticsEnabled,
+                  onChanged: (v) {
+                    config.setHapticsEnabled(v);
+                    if (v) AppHaptics.lightImpact();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildSectionCard(
+              title: 'Thông tin & Dọn dẹp',
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.token_outlined),
+                  title: const Text('Giới hạn API', style: TextStyle(fontSize: 14)),
+                  trailing: Text(
+                    config.apiRemaining,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, indent: 48),
+                _buildVersionTile(context),
+                const Divider(height: 1, indent: 48),
+                _buildCacheTile(context),
+                const Divider(height: 1, indent: 48),
+                ListTile(
+                  leading: const Icon(Icons.aspect_ratio_rounded),
+                  title: const Text('Đồng bộ kích thước ảnh'),
+                  onTap: () => _handleSyncCommand(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildSectionCard({required String title, required List<Widget> children}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -231,14 +172,10 @@ class _SettingsTabState extends State<SettingsTab> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
             side: BorderSide(
-              color: Theme.of(
-                context,
-              ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.3),
             ),
           ),
-          color: Theme.of(
-            context,
-          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
           clipBehavior: Clip.antiAlias,
           child: Column(children: children),
         ),
@@ -246,138 +183,74 @@ class _SettingsTabState extends State<SettingsTab> {
     );
   }
 
-  Widget _buildSwitchTile({
-    required String title,
-    required IconData icon,
-    required ValueNotifier<bool> notifier,
-    required Function(bool) onChanged,
-  }) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: notifier,
-      builder: (context, val, _) => SwitchListTile(
-        title: Text(title, style: const TextStyle(fontSize: 14)),
-        secondary: Icon(icon),
-        value: val,
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildThemeModeTile(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MyApp.themeIndexNotifier,
-      builder: (context, currentSettings, _) => ListTile(
-        leading: const Icon(Icons.brightness_6_outlined),
-        title: const Text('Hiển Thị', style: TextStyle(fontSize: 14)),
-        trailing: DropdownButton<int>(
-          value: currentSettings,
-          underline: const SizedBox(),
-          alignment: Alignment.centerRight,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-          items: const [
-            DropdownMenuItem(
-              value: 0,
-              child: Text('Tự động', style: TextStyle(fontSize: 14)),
-            ),
-            DropdownMenuItem(
-              value: 1,
-              child: Text('Sáng', style: TextStyle(fontSize: 14)),
-            ),
-            DropdownMenuItem(
-              value: 2,
-              child: Text('Tối', style: TextStyle(fontSize: 14)),
-            ),
-          ],
-          onChanged: (index) async {
-            if (index == null) return;
-            MyApp.themeIndexNotifier.value = index;
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setInt('themeMode', index);
+  Widget _buildThemeModeTile(BuildContext context, dynamic config) {
+    return ListTile(
+      leading: const Icon(Icons.brightness_6_outlined),
+      title: const Text('Hiển Thị', style: TextStyle(fontSize: 14)),
+      trailing: DropdownButton<int>(
+        value: config.themeIndex,
+        underline: const SizedBox(),
+        alignment: Alignment.centerRight,
+        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+        items: const [
+          DropdownMenuItem(value: 0, child: Text('Tự động', style: TextStyle(fontSize: 14))),
+          DropdownMenuItem(value: 1, child: Text('Sáng', style: TextStyle(fontSize: 14))),
+          DropdownMenuItem(value: 2, child: Text('Tối', style: TextStyle(fontSize: 14))),
+        ],
+        onChanged: (index) {
+          if (index != null) {
+            config.setThemeIndex(index);
             AppHaptics.selectionClick();
-          },
-        ),
+          }
+        },
       ),
     );
   }
 
-  Widget _buildThemeColorTile(BuildContext context) {
-    return ValueListenableBuilder<Color>(
-      valueListenable: MyApp.themeColorNotifier,
-      builder: (context, currentColor, _) => ListTile(
-        leading: const Icon(Icons.palette_outlined),
-        title: const Text('Màu Sắc', style: TextStyle(fontSize: 14)),
-        trailing: Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primary,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: Colors.grey.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
+  Widget _buildThemeColorTile(BuildContext context, dynamic config) {
+    return ListTile(
+      leading: const Icon(Icons.palette_outlined),
+      title: const Text('Màu Sắc', style: TextStyle(fontSize: 14)),
+      trailing: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.3), width: 1),
         ),
-        onTap: () => _showAreaColorPicker(context, currentColor),
       ),
+      onTap: () => _showAreaColorPicker(context, config),
     );
   }
 
-  Widget _buildGridColumnsTile(BuildContext context) {
-    return ValueListenableBuilder<int>(
-      valueListenable: MyApp.gridColumnsNotifier,
-      builder: (context, currentSettings, _) => ListTile(
-        leading: const Icon(Icons.grid_view_outlined),
-        title: const Text('Số Cột', style: TextStyle(fontSize: 14)),
-        trailing: DropdownButton<int>(
-          value: currentSettings,
-          underline: const SizedBox(),
-          alignment: Alignment.centerRight,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
-          items: const [
-            DropdownMenuItem(
-              value: 1,
-              child: Text('1 Cột', style: TextStyle(fontSize: 14)),
-            ),
-            DropdownMenuItem(
-              value: 2,
-              child: Text('2 Cột', style: TextStyle(fontSize: 14)),
-            ),
-            DropdownMenuItem(
-              value: 3,
-              child: Text('3 Cột', style: TextStyle(fontSize: 14)),
-            ),
-          ],
-          onChanged: (cols) async {
-            if (cols == null) return;
-            MyApp.gridColumnsNotifier.value = cols;
-            final prefs = await SharedPreferences.getInstance();
-            await prefs.setInt('gridColumns', cols);
+  Widget _buildGridColumnsTile(BuildContext context, dynamic config) {
+    return ListTile(
+      leading: const Icon(Icons.grid_view_outlined),
+      title: const Text('Số Cột', style: TextStyle(fontSize: 14)),
+      trailing: DropdownButton<int>(
+        value: config.gridColumns,
+        underline: const SizedBox(),
+        alignment: Alignment.centerRight,
+        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+        items: const [
+          DropdownMenuItem(value: 1, child: Text('1 Cột', style: TextStyle(fontSize: 14))),
+          DropdownMenuItem(value: 2, child: Text('2 Cột', style: TextStyle(fontSize: 14))),
+          DropdownMenuItem(value: 3, child: Text('3 Cột', style: TextStyle(fontSize: 14))),
+        ],
+        onChanged: (cols) {
+          if (cols != null) {
+            config.setGridColumns(cols);
             AppHaptics.selectionClick();
-          },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildApiLimitTile(BuildContext context) {
-    return ValueListenableBuilder<String>(
-      valueListenable: GithubService.apiRemaining,
-      builder: (context, remaining, _) => ListTile(
-        leading: const Icon(Icons.token_outlined),
-        title: const Text('Giới hạn API', style: TextStyle(fontSize: 14)),
-        trailing: Text(
-          '$remaining',
-          style: TextStyle(
-            fontSize: 13,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
+          }
+        },
       ),
     );
   }
 
   Widget _buildVersionTile(BuildContext context) {
+    final updateVM = AppDependencies.instance.updateViewModel;
+
     return FutureBuilder<PackageInfo>(
       future: PackageInfo.fromPlatform(),
       builder: (context, snapshot) => ListTile(
@@ -392,9 +265,39 @@ class _SettingsTabState extends State<SettingsTab> {
         ),
         onTap: () async {
           if (snapshot.hasData) {
-            _manualUpdateCheck(context, snapshot.data!.version);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Đang kiểm tra bản cập nhật mới...'), duration: Duration(seconds: 1)),
+            );
+            await updateVM.checkForUpdates();
+            if (updateVM.latestRelease != null) {
+              if (mounted) _showManualUpdateDialog(context, updateVM.latestRelease);
+            } else {
+              if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Bạn đang sử dụng phiên bản mới nhất!')),
+              );
+            }
           }
         },
+      ),
+    );
+  }
+
+  void _showManualUpdateDialog(BuildContext context, dynamic release) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Cập nhật ứng dụng'),
+        content: Text('Đã phiên bản mới ${release.tagName}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('Để sau')),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogCtx);
+              startUpdateProcess(context, release);
+            },
+            child: const Text('Cập nhật'),
+          ),
+        ],
       ),
     );
   }
@@ -417,9 +320,7 @@ class _SettingsTabState extends State<SettingsTab> {
         if (tempDir.existsSync()) {
           for (final entity in tempDir.listSync(recursive: true)) {
             if (entity is File) {
-              try {
-                await entity.delete();
-              } catch (_) {}
+              try { await entity.delete(); } catch (_) {}
             }
           }
         }
@@ -435,18 +336,16 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Future<void> _handleSyncCommand(BuildContext context) async {
+    // Legacy sync logic kept for compatibility
     AppHaptics.lightImpact();
     final now = DateTime.now();
-    if (_lastTapTime == null ||
-        now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
+    if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
       _syncTapCount = 1;
     } else {
       _syncTapCount++;
     }
     _lastTapTime = now;
-    if (_syncTapCount < 10) {
-      return;
-    }
+    if (_syncTapCount < 10) return;
 
     _syncTapCount = 0;
     AppHaptics.mediumImpact();
@@ -455,34 +354,23 @@ class _SettingsTabState extends State<SettingsTab> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận đồng bộ ?'),
-        content: const Text(
-          'Bắt đầu đồng bộ dữ liệu sửa lỗi từ hộp lưu trữ sang Mạng lưới ảnh?',
-        ),
+        content: const Text('Bắt đầu đồng bộ dữ liệu sửa lỗi từ hộp lưu trữ sang Mạng lưới ảnh?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Đồng ý'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Hủy')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Đồng ý')),
         ],
       ),
     );
 
-    if (confirmSync != true || !SupabaseService.isInitialized) return;
-
+    if (confirmSync != true) return;
     if (!context.mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: ExpressiveLoadingIndicator(isContained: true)),
     );
-
     final result = await MigrationUtility.migrateFromGitHub();
     if (!context.mounted) return;
-
     Navigator.pop(context);
     showDialog(
       context: context,
@@ -490,17 +378,14 @@ class _SettingsTabState extends State<SettingsTab> {
         title: const Text('Kết quả đồng bộ'),
         content: Text(result),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
         ],
       ),
     );
   }
 
-  void _showAreaColorPicker(BuildContext context, Color initialColor) {
-    HSVColor hsv = HSVColor.fromColor(initialColor);
+  void _showAreaColorPicker(BuildContext context, dynamic config) {
+    HSVColor hsv = HSVColor.fromColor(config.themeColor);
     double hue = hsv.hue;
 
     showDialog(
@@ -512,84 +397,47 @@ class _SettingsTabState extends State<SettingsTab> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Chạm vào vòng tròn để chọn tông màu',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
+                const Text('Chạm vào vòng tròn để chọn tông màu', style: TextStyle(fontSize: 12, color: Colors.grey)),
                 const SizedBox(height: 20),
-                // --- Simple Color Wheel ---
                 SizedBox(
-                  width: 200,
-                  height: 200,
+                  width: 200, height: 200,
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // The Wheel (Hue circle)
-                      CustomPaint(
-                        size: const Size(200, 200),
-                        painter: ColorWheelPainter(),
-                      ),
-                      // Gesture Overlay
+                      CustomPaint(size: const Size(200, 200), painter: ColorWheelPainter()),
                       GestureDetector(
                         onPanUpdate: (details) {
-                          final RenderBox box =
-                              context.findRenderObject() as RenderBox;
-                          final Offset localOffset = details.localPosition;
-                          final double centerX = 100;
-                          final double centerY = 100;
-                          final double dx = localOffset.dx - centerX;
-                          final double dy = localOffset.dy - centerY;
+                          final double centerX = 100, centerY = 100;
+                          final double dx = details.localPosition.dx - centerX, dy = details.localPosition.dy - centerY;
                           double angle = atan2(dy, dx) * (180 / pi);
-                          angle = (angle + 90) % 360; // Correction
+                          angle = (angle + 90) % 360;
                           if (angle < 0) angle += 360;
                           setDialogState(() => hue = angle);
                         },
                         onTapDown: (details) {
-                          final Offset localOffset = details.localPosition;
-                          final double centerX = 100;
-                          final double centerY = 100;
-                          final double dx = localOffset.dx - centerX;
-                          final double dy = localOffset.dy - centerY;
+                          final double centerX = 100, centerY = 100;
+                          final double dx = details.localPosition.dx - centerX, dy = details.localPosition.dy - centerY;
                           double angle = atan2(dy, dx) * (180 / pi);
-                          angle = (angle + 90) % 360; // Correction
+                          angle = (angle + 90) % 360;
                           if (angle < 0) angle += 360;
                           setDialogState(() => hue = angle);
                         },
-                        child: Container(
-                          width: 200,
-                          height: 200,
-                          decoration: const BoxDecoration(
-                            color: Colors.transparent,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                        child: Container(width: 200, height: 200, decoration: const BoxDecoration(color: Colors.transparent, shape: BoxShape.circle)),
                       ),
-                      // Selector Indicator
                       IgnorePointer(
                         child: Transform.rotate(
                           angle: (hue - 90) * (pi / 180),
                           child: Stack(
                             children: [
-                              // logic marker
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: Container(
                                   margin: const EdgeInsets.only(right: 5),
-                                  width: 20,
-                                  height: 20,
+                                  width: 20, height: 20,
                                   decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Colors.black26,
-                                      width: 2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                      ),
-                                    ],
+                                    shape: BoxShape.circle, color: Colors.white,
+                                    border: Border.all(color: Colors.black26, width: 2),
+                                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
                                   ),
                                 ),
                               ),
@@ -597,57 +445,31 @@ class _SettingsTabState extends State<SettingsTab> {
                           ),
                         ),
                       ),
-                      // Center Preview
                       Container(
-                        width: 60,
-                        height: 60,
+                        width: 60, height: 60,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: ColorScheme.fromSeed(
-                            seedColor: HSVColor.fromAHSV(
-                              1.0,
-                              hue,
-                              0.8,
-                              0.9,
-                            ).toColor(),
+                            seedColor: HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor(),
                             brightness: Theme.of(context).brightness,
                           ).primary,
                           border: Border.all(color: Colors.white, width: 3),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black12, blurRadius: 8),
-                          ],
+                          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                // Current selection hint
-                Text(
-                  'Màu đang chọn: #${HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor().value.toRadixString(16).substring(2).toUpperCase()}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text('Màu đang chọn: #${HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor().value.toRadixString(16).substring(2).toUpperCase()}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               ],
             ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Hủy'),
-              ),
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
               FilledButton(
-                onPressed: () async {
-                  final finalColor = HSVColor.fromAHSV(
-                    1.0,
-                    hue,
-                    0.8,
-                    0.9,
-                  ).toColor();
-                  MyApp.themeColorNotifier.value = finalColor;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.setInt('themeColor', finalColor.value);
+                onPressed: () {
+                  final finalColor = HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor();
+                  config.setThemeColor(finalColor);
                   if (context.mounted) Navigator.pop(context);
                   AppHaptics.mediumImpact();
                 },
@@ -661,7 +483,6 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 }
 
-// Custom Painter for the Color Wheel
 class ColorWheelPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -669,23 +490,10 @@ class ColorWheelPainter extends CustomPainter {
     final radius = size.width / 2;
     const segments = 360;
     final sweepAngle = (2 * pi) / segments;
-
     for (int i = 0; i < segments; i++) {
-      final paint = Paint()
-        ..color = HSVColor.fromAHSV(1.0, i.toDouble(), 0.8, 0.9).toColor()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 40; // Thick enough to be easy to tap
-
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - 20),
-        (i - 90) * (pi / 180), // Offset by -90 to match atan2 behavior
-        sweepAngle + 0.02,
-        false,
-        paint,
-      );
+      final paint = Paint()..color = HSVColor.fromAHSV(1.0, i.toDouble(), 0.8, 0.9).toColor()..style = PaintingStyle.stroke..strokeWidth = 40;
+      canvas.drawArc(Rect.fromCircle(center: center, radius: radius - 20), (i - 90) * (pi / 180), sweepAngle + 0.02, false, paint);
     }
   }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  @override bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

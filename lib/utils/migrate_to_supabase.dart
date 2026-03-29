@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import '../services/supabase_service.dart';
+import '../main.dart';
 
 class MigrationUtility {
   static Future<String> migrateFromGitHub() async {
@@ -36,7 +37,7 @@ class MigrationUtility {
       }
 
       if (toUpsert.isNotEmpty) {
-        await SupabaseService.bulkUpsertImageMetadata(toUpsert);
+        await AppDependencies.instance.imageRepository.bulkUpsertMetadata(toUpsert);
       }
 
       return 'Thành công đồng bộ ${toUpsert.length} ảnh!';

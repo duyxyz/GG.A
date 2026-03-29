@@ -3,26 +3,22 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
-
 import 'package:gal/gal.dart';
 import 'package:path/path.dart' as p;
+
+import '../main.dart';
+import '../data/models/gallery_image.dart';
 import '../utils/haptics.dart';
-import '../services/github_service.dart';
-import '../services/supabase_service.dart';
 import '../services/favorite_service.dart';
 import 'expressive_loading_indicator.dart';
 
 class FullScreenImageViewer extends StatefulWidget {
-  final String imageUrl;
-  final double aspectRatio;
-  final Map<String, dynamic>? imageMap;
+  final GalleryImage image;
   final String heroTag;
 
   const FullScreenImageViewer({
     super.key,
-    required this.imageUrl,
-    required this.aspectRatio,
-    this.imageMap,
+    required this.image,
     required this.heroTag,
   });
 
@@ -54,16 +50,13 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   }
 
   Future<void> _checkFavorite() async {
-    if (widget.imageMap != null && widget.imageMap!['sha'] != null) {
-      final isFav = await FavoriteService.isFavorite(widget.imageMap!['sha']);
-      if (mounted) setState(() => _isFavorite = isFav);
-    }
+    final isFav = await FavoriteService.isFavorite(widget.image.sha);
+    if (mounted) setState(() => _isFavorite = isFav);
   }
 
   Future<void> _toggleFavorite() async {
-    if (widget.imageMap == null || widget.imageMap!['sha'] == null) return;
     AppHaptics.selectionClick();
-    await FavoriteService.toggleFavorite(widget.imageMap!['sha']);
+    await FavoriteService.toggleFavorite(widget.image.sha);
     _checkFavorite();
   }
 
@@ -106,10 +99,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         _scale = newScale;
       } else if (_isDismissing) {
         _dismissOffset += details.focalPointDelta;
-        _dismissScale = (1.0 - (_dismissOffset.distance / 1500)).clamp(
-          0.6,
-          1.0,
-        );
+        _dismissScale = (1.0 - (_dismissOffset.distance / 1500)).clamp(0.6, 1.0);
       } else if (_scale > 1.01) {
         _offset += details.focalPointDelta;
       }
@@ -119,24 +109,16 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   void _onScaleEnd(ScaleEndDetails details) {
     if (_isDismissing) {
       if (_dismissOffset.distance > 100 || details.velocity.pixelsPerSecond.distance > 500) {
-        
         final isBrokenFavorite = widget.heroTag.startsWith('fav-') && !_isFavorite;
-        
         if (isBrokenFavorite) {
           setState(() {
             _isDismissing = false;
             _isCustomDismissing = true;
           });
-          
           _resetAnim?.dispose();
-          _resetAnim = AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 250),
-          );
-          
+          _resetAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
           final startScale = _dismissScale;
           final startOffset = _dismissOffset;
-          
           _resetAnim!.addListener(() {
             if (!mounted) return;
             setState(() {
@@ -145,17 +127,14 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
               _dismissOffset = startOffset + Offset(0, 50 * t);
             });
           });
-          
           _resetAnim!.addStatusListener((status) {
             if (status == AnimationStatus.completed) {
               if (mounted) Navigator.of(context).pop();
             }
           });
-          
           _resetAnim!.forward();
           return;
         }
-
         _isDismissing = false;
         Navigator.of(context).pop();
       } else {
@@ -167,7 +146,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       }
       return;
     }
-
     if (_scale < 1.0) {
       _animateReset(targetScale: 1.0, targetOffset: Offset.zero);
     } else if (_scale <= 1.05 && _offset.distance > 1) {
@@ -188,64 +166,39 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   Future<void> _downloadImage(BuildContext sheetContext) async {
     if (_isDownloading) return;
     Navigator.of(sheetContext).pop();
-
-    setState(() {
-      _isDownloading = true;
-    });
+    setState(() => _isDownloading = true);
     AppHaptics.mediumImpact();
 
     try {
-      final downloadUrl = widget.imageMap != null && widget.imageMap!['sha'] != null 
-          ? '${widget.imageUrl}?v=${widget.imageMap!['sha']}'
-          : widget.imageUrl;
+      final downloadUrl = '${widget.image.downloadUrl}?v=${widget.image.sha}';
       final response = await http.get(Uri.parse(downloadUrl));
-      if (response.statusCode != 200) {
-        throw Exception("Server trả về lỗi: ${response.statusCode}");
-      }
+      if (response.statusCode != 200) throw Exception("Server trả về lỗi: ${response.statusCode}");
 
       final Uint8List imageBytes = response.bodyBytes;
       if (imageBytes.isEmpty) throw Exception("Dữ liệu ảnh trống");
 
-      final Uint8List jpegBytes = await FlutterImageCompress.compressWithList(
-        imageBytes,
-        format: CompressFormat.jpeg,
-        quality: 95,
-      );
-
-      if (jpegBytes == null || jpegBytes.isEmpty) {
-        throw Exception("Không thể chuyển đổi định dạng ảnh");
-      }
+      final Uint8List jpegBytes = (await FlutterImageCompress.compressWithList(
+        imageBytes, format: CompressFormat.jpeg, quality: 95,
+      ))!;
 
       final hasAccess = await Gal.hasAccess();
       if (!hasAccess) {
         final granted = await Gal.requestAccess();
-        if (!granted)
-          throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
+        if (!granted) throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
       }
 
-      final fileName = p.basenameWithoutExtension(widget.imageUrl);
+      final fileName = p.basenameWithoutExtension(widget.image.downloadUrl);
       await Gal.putImageBytes(jpegBytes, name: fileName);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã lưu vào bộ sưu tập'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.green,
-          ),
+          const SnackBar(content: Text('Đã lưu vào bộ sưu tập'), behavior: SnackBarBehavior.floating, backgroundColor: Colors.green),
         );
       }
     } catch (e) {
-      debugPrint("Download error: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}',
-            ),
-            backgroundColor: Colors.redAccent,
-            behavior: SnackBarBehavior.floating,
-          ),
+          SnackBar(content: Text('Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}'), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
         );
       }
     } finally {
@@ -256,26 +209,19 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   bool _isDeleting = false;
 
   Future<void> _deleteImage(BuildContext sheetContext) async {
-    if (widget.imageMap == null || _isDeleting) return;
-
+    if (_isDeleting) return;
     Navigator.of(sheetContext).pop();
-
     AppHaptics.lightImpact();
+    
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Xóa ảnh này ?'),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Hủy'),
-            ),
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Hủy')),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
+              style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Xóa'),
             ),
@@ -285,28 +231,16 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     );
 
     if (confirm != true) return;
-
     setState(() => _isDeleting = true);
     try {
-      final img = widget.imageMap!;
-      if (img['path'] != null && img['sha'] != null) {
-        await GithubService.deleteImage(img['path'], img['sha']);
-      }
-      if (img['index'] != null) {
-        await SupabaseService.deleteImageMetadata(img['index'] as int);
-      }
-
+      await AppDependencies.instance.homeViewModel.deleteImage(widget.image);
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Đã xóa ảnh thành công')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa ảnh thành công')));
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi xóa ảnh: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xóa ảnh: $e')));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
@@ -315,12 +249,9 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
 
   void _showInfoDialog() {
     AppHaptics.lightImpact();
-    final img = widget.imageMap;
-    if (img == null) return;
-
-    final name = img['name'] ?? 'Không tên';
-    final path = img['path'] ?? 'Không rõ';
-    final sizeInBytes = img['size'] as int? ?? 0;
+    final name = widget.image.name;
+    final path = widget.image.path;
+    final sizeInBytes = widget.image.size;
     final sizeFormatted = sizeInBytes > 1024 * 1024
         ? '${(sizeInBytes / (1024 * 1024)).toStringAsFixed(2)} MB'
         : '${(sizeInBytes / 1024).toStringAsFixed(2)} KB';
@@ -341,10 +272,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
         ],
       ),
     );
@@ -356,31 +284,19 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
           Text(value, style: const TextStyle(fontSize: 14)),
         ],
       ),
     );
   }
 
-  void _animateReset({
-    required double targetScale,
-    required Offset targetOffset,
-  }) {
+  void _animateReset({required double targetScale, required Offset targetOffset}) {
     final startScale = _scale;
     final startOffset = _offset;
-
     _resetAnim?.dispose();
-    _resetAnim = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 250),
-    );
-
+    _resetAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
     final curved = CurvedAnimation(parent: _resetAnim!, curve: Curves.easeOut);
-
     curved.addListener(() {
       setState(() {
         final t = curved.value;
@@ -388,7 +304,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         _offset = Offset.lerp(startOffset, targetOffset, t)!;
       });
     });
-
     _resetAnim!.forward();
   }
 
@@ -397,15 +312,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     double bgOpacity = (_isDismissing || _isCustomDismissing)
         ? (1.0 - (_dismissOffset.distance / 300)).clamp(0.0, 1.0)
         : 1.0;
-
-    if (_isCustomDismissing && _resetAnim != null) {
-      bgOpacity *= (1.0 - _resetAnim!.value);
-    }
+    if (_isCustomDismissing && _resetAnim != null) bgOpacity *= (1.0 - _resetAnim!.value);
 
     return Scaffold(
-      backgroundColor: Theme.of(
-        context,
-      ).scaffoldBackgroundColor.withOpacity(bgOpacity),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(bgOpacity),
       body: Stack(
         children: [
           GestureDetector(
@@ -418,112 +328,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
               showModalBottomSheet(
                 context: context,
                 backgroundColor: Colors.transparent,
-                builder: (context) => Container(
-                  padding: const EdgeInsets.only(bottom: 32),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 12),
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.tonal(
-                                    onPressed: () => _downloadImage(context),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.blue.withOpacity(0.2),
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.blue,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                    ),
-                                    child: const Text('Tải xuống'),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: FilledButton.tonal(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      Future.delayed(
-                                        const Duration(milliseconds: 100),
-                                        () => _toggleFavorite(),
-                                      );
-                                    },
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.pink.withOpacity(0.2),
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.pink,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                    ),
-                                    child: Text(
-                                      _isFavorite ? 'Bỏ thích' : 'Yêu thích',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: FilledButton.tonal(
-                                    onPressed: () {
-                                      Navigator.of(context).pop();
-                                      _showInfoDialog();
-                                    },
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.grey.withOpacity(0.2),
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.grey[800],
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                    ),
-                                    child: const Text('Thông tin'),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: FilledButton.tonal(
-                                    onPressed: () => _deleteImage(context),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: Colors.red.withOpacity(0.2),
-                                      foregroundColor: Theme.of(context).brightness == Brightness.dark
-                                          ? Colors.white
-                                          : Colors.red,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                    ),
-                                    child: const Text('Xóa ảnh'),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                builder: (context) => _buildBottomSheet(context),
               );
             },
             behavior: HitTestBehavior.opaque,
@@ -541,18 +346,12 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                       child: Hero(
                         tag: widget.heroTag,
                         child: AspectRatio(
-                          aspectRatio: widget.aspectRatio,
+                          aspectRatio: widget.image.aspectRatio,
                           child: CachedNetworkImage(
-                            imageUrl: widget.imageMap != null && widget.imageMap!['sha'] != null
-                                ? '${widget.imageUrl}?v=${widget.imageMap!['sha']}'
-                                : widget.imageUrl,
+                            imageUrl: '${widget.image.downloadUrl}?v=${widget.image.sha}',
                             fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorWidget: (context, url, error) => Icon(
-                              Icons.error,
-                              color: Theme.of(context).colorScheme.error,
-                            ),
+                            width: double.infinity, height: double.infinity,
+                            errorWidget: (context, url, error) => Icon(Icons.error, color: Theme.of(context).colorScheme.error),
                           ),
                         ),
                       ),
@@ -562,45 +361,67 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
               ),
             ),
           ),
-          if (_isDownloading)
-            Container(
-              color: Colors.black45,
-              child: const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ExpressiveLoadingIndicator(isContained: true),
-                        SizedBox(height: 16),
-                        Text('Đang lưu ảnh...'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (_isDeleting)
-            Container(
-              color: Colors.black45,
-              child: const Center(
-                child: Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ExpressiveLoadingIndicator(isContained: true),
-                        SizedBox(height: 16),
-                        Text('Đang xóa ảnh...'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          if (_isDownloading) _buildLoadingOverlay('Đang lưu ảnh...'),
+          if (_isDeleting) _buildLoadingOverlay('Đang xóa ảnh...'),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBottomSheet(BuildContext context) {
+    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.only(bottom: 32),
+      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                Row(children: [
+                  Expanded(child: _buildActionBtn('Tải xuống', Colors.blue, () => _downloadImage(context), isDark)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildActionBtn(_isFavorite ? 'Bỏ thích' : 'Yêu thích', Colors.pink, () { Navigator.pop(context); _toggleFavorite(); }, isDark)),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: _buildActionBtn('Thông tin', Colors.grey, () { Navigator.pop(context); _showInfoDialog(); }, isDark)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildActionBtn('Xóa ảnh', Colors.red, () => _deleteImage(context), isDark)),
+                ]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionBtn(String label, Color color, VoidCallback onPressed, bool isDark) {
+    return FilledButton.tonal(
+      onPressed: onPressed,
+      style: FilledButton.styleFrom(backgroundColor: color.withOpacity(0.2), foregroundColor: isDark ? Colors.white : color, padding: const EdgeInsets.symmetric(vertical: 16)),
+      child: Text(label),
+    );
+  }
+
+  Widget _buildLoadingOverlay(String text) {
+    return Container(
+      color: Colors.black45,
+      child: Center(
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const ExpressiveLoadingIndicator(isContained: true),
+              const SizedBox(height: 16),
+              Text(text),
+            ]),
+          ),
+        ),
       ),
     );
   }

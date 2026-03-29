@@ -1,53 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../main.dart';
+import '../logic/viewmodels/home_view_model.dart';
 import '../widgets/image_grid_item.dart';
 import '../widgets/error_view.dart';
 import '../widgets/expressive_loading_indicator.dart';
 
-class HomeTab extends StatefulWidget {
-  final List<Map<String, dynamic>> images;
-  final bool isLoading;
-  final String error;
-  final Future<void> Function() onRefresh;
+class HomeTab extends StatelessWidget {
+  final HomeViewModel viewModel;
   final ScrollController scrollController;
 
   const HomeTab({
     super.key,
-    required this.images,
-    required this.isLoading,
-    required this.error,
-    required this.onRefresh,
+    required this.viewModel,
     required this.scrollController,
   });
 
   @override
-  State<HomeTab> createState() => _HomeTabState();
-}
-
-class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
   Widget build(BuildContext context) {
-    super.build(context);
-
-    if (widget.error.isNotEmpty) {
+    if (viewModel.error.isNotEmpty) {
       return ErrorView(
-        message: 'Lỗi: ${widget.error}',
-        onRetry: widget.onRefresh,
+        message: 'Lỗi: ${viewModel.error}',
+        onRetry: viewModel.loadImages,
         isFullScreen: false,
       );
     }
 
-    final bool showSkeletons = widget.isLoading && widget.images.isEmpty;
+    final bool showSkeletons = viewModel.isLoading && viewModel.images.isEmpty;
+    final gridConfig = AppDependencies.instance.configViewModel;
 
     return Stack(
       children: [
-        ValueListenableBuilder<int>(
-          valueListenable: MyApp.gridColumnsNotifier,
-          builder: (context, gridCols, _) {
+        ListenableBuilder(
+          listenable: gridConfig,
+          builder: (context, _) {
             if (showSkeletons) {
               return const Center(
                 child: ExpressiveLoadingIndicator(isContained: true),
@@ -55,29 +41,24 @@ class _HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
             }
 
             return MasonryGridView.count(
-              controller: widget.scrollController,
+              controller: scrollController,
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(4.0),
-              crossAxisCount: gridCols,
+              crossAxisCount: gridConfig.gridColumns,
               mainAxisSpacing: 4.0,
               crossAxisSpacing: 4.0,
-              itemCount: widget.images.length,
+              itemCount: viewModel.images.length,
               itemBuilder: (context, index) {
-                final imageUrl = widget.images[index]['download_url'];
-                final aspectRatio =
-                    widget.images[index]['aspect_ratio'] as double;
+                final image = viewModel.images[index];
                 return ImageGridItem(
-                  imageUrl: imageUrl,
-                  aspectRatio: aspectRatio,
-                  imageMap: widget.images[index],
-                  heroTag: 'home-${widget.images[index]['index']}',
+                  image: image,
+                  heroTag: 'home-${image.index}',
                 );
               },
             );
           },
         ),
-        // Hiện thanh loading ở dưới chỉ khi ĐÃ CÓ ảnh (tức là nạp thêm hoặc làm mới)
-        if (widget.isLoading && widget.images.isNotEmpty)
+        if (viewModel.isLoading && viewModel.images.isNotEmpty)
           const Positioned(
             bottom: 0,
             left: 0,
