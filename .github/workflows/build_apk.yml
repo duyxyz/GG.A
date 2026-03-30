@@ -1,17 +1,14 @@
 name: Flutter Build APK
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  workflow_dispatch: # Chỉ chạy thủ công khi bạn tự bấm nút trên GitHub
 
 jobs:
   build:
     name: Build APK
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write # Quan trọng: Cho phép Action tạo Release và đẩy file lên
 
     steps:
       - name: Checkout repository
@@ -33,28 +30,6 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Extract Version from pubspec.yaml
-        id: pubspec
-        run: |
-          # Trích xuất dòng version và làm sạch ký tự lạ
-          VERSION_LINE=$(grep "^version: " pubspec.yaml | sed 's/version: //')
-          
-          # Trích xuất Version Name (ví dụ: 1.1.0)
-          VERSION_NAME=$(echo $VERSION_LINE | cut -d '+' -f 1 | tr -d '[:space:]')
-          
-          # Trích xuất Version Code gốc (ví dụ: 3000), mặc định là 1 nếu trống
-          VERSION_CODE=$(echo $VERSION_LINE | cut -s -d '+' -f 2 | tr -d '[:space:]')
-          if [ -z "$VERSION_CODE" ]; then
-            VERSION_CODE=1
-          fi
-          
-          # Tính toán build number mới: Gốc + github.run_number
-          NEW_BUILD_NUMBER=$((VERSION_CODE + github.run_number))
-          
-          echo "version=$VERSION_NAME" >> $GITHUB_OUTPUT
-          echo "build_number=$NEW_BUILD_NUMBER" >> $GITHUB_OUTPUT
-          echo "tag_name=v$VERSION_NAME+$NEW_BUILD_NUMBER" >> $GITHUB_OUTPUT
-
       - name: Decode Keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
@@ -65,15 +40,24 @@ jobs:
 
       - name: Build APK (Split per ABI)
         run: |
+          # Tính toán build number từ run_number của GitHub
+          # Giả sử bắt đầu từ 1.0.0, mỗi lần build sẽ tăng version: 1.0.<run_number>
+          BUILD_NAME="1.0.${{ github.run_number }}"
+          BUILD_NUMBER="${{ github.run_number }}"
           flutter build apk --release --split-per-abi \
             --target-platform android-arm,android-arm64 \
-            --build-name=${{ steps.pubspec.outputs.version }} \
-            --build-number=${{ steps.pubspec.outputs.build_number }} \
+            --build-name=$BUILD_NAME \
+            --build-number=$BUILD_NUMBER \
             --dart-define=GH_TOKEN=${{ secrets.GH_TOKEN }}
+
+      - name: Generate Release Tag
+        id: tag
+        run: echo "tag_name=v1.0.${{ github.run_number }}" >> $GITHUB_OUTPUT
 
       - name: Get Commits
         id: commits
         run: |
+          # Lấy 5 commit mới nhất hoặc kể từ tag trước (nếu có)
           COMMITS=$(git log -n 5 --pretty=format:"• %s")
           echo "changelog<<EOF" >> $GITHUB_OUTPUT
           echo "$COMMITS" >> $GITHUB_OUTPUT
@@ -82,8 +66,8 @@ jobs:
       - name: Create Release and Upload APKs
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.pubspec.outputs.tag_name }}
-          name: Release ${{ steps.pubspec.outputs.tag_name }}
+          tag_name: ${{ steps.tag.outputs.tag_name }}
+          name: Release ${{ steps.tag.outputs.tag_name }}
           body: ${{ steps.commits.outputs.changelog }}
           files: build/app/outputs/flutter-apk/*.apk
           generate_release_notes: false
