@@ -371,27 +371,32 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   Widget _buildBottomSheet(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      padding: const EdgeInsets.only(bottom: 32),
-      decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+      padding: const EdgeInsets.only(bottom: 32, top: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(margin: const EdgeInsets.symmetric(vertical: 12), width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.withOpacity(0.3), borderRadius: BorderRadius.circular(2))),
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Row(children: [
-                  Expanded(child: _buildActionBtn('Tải xuống', Colors.blue, () => _downloadImage(context), isDark)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildActionBtn(_isFavorite ? 'Bỏ thích' : 'Yêu thích', Colors.pink, () { Navigator.pop(context); _toggleFavorite(); }, isDark)),
-                ]),
-                const SizedBox(height: 12),
-                Row(children: [
-                  Expanded(child: _buildActionBtn('Thông tin', Colors.grey, () { Navigator.pop(context); _showInfoDialog(); }, isDark)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _buildActionBtn('Xóa ảnh', Colors.red, () => _deleteImage(context), isDark)),
-                ]),
+                _buildActionBtn(Icons.file_download_outlined, Theme.of(context).colorScheme.primary, () => _downloadImage(context), isDark),
+                _buildActionBtn(_isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded, Theme.of(context).colorScheme.primary, () { Navigator.pop(context); _toggleFavorite(); }, isDark),
+                _buildActionBtn(Icons.info_outline_rounded, Theme.of(context).colorScheme.primary, () { Navigator.pop(context); _showInfoDialog(); }, isDark),
+                _buildActionBtn(Icons.delete_outline_rounded, Theme.of(context).colorScheme.primary, () => _deleteImage(context), isDark),
               ],
             ),
           ),
@@ -400,11 +405,15 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     );
   }
 
-  Widget _buildActionBtn(String label, Color color, VoidCallback onPressed, bool isDark) {
-    return FilledButton.tonal(
+  Widget _buildActionBtn(IconData icon, Color color, VoidCallback onPressed, bool isDark) {
+    return IconButton.filledTonal(
       onPressed: onPressed,
-      style: FilledButton.styleFrom(backgroundColor: color.withOpacity(0.2), foregroundColor: isDark ? Colors.white : color, padding: const EdgeInsets.symmetric(vertical: 16)),
-      child: Text(label),
+      icon: Icon(icon, size: 26),
+      style: IconButton.styleFrom(
+        backgroundColor: color.withOpacity(0.12),
+        foregroundColor: color,
+        padding: const EdgeInsets.all(16),
+      ),
     );
   }
 
