@@ -91,6 +91,13 @@ class _SettingsTabState extends State<SettingsTab> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
           children: [
             _buildSectionCard(
+              title: 'Về ứng dụng',
+              children: [
+                _buildVersionTile(context),
+              ],
+            ),
+            const SizedBox(height: 24),
+            _buildSectionCard(
               title: 'Giao diện & Hiển thị',
               children: [
                 _buildThemeModeTile(context, config),
@@ -130,8 +137,6 @@ class _SettingsTabState extends State<SettingsTab> {
                     ),
                   ),
                 ),
-                const Divider(height: 1, indent: 48),
-                _buildVersionTile(context),
                 const Divider(height: 1, indent: 48),
                 _buildCacheTile(context),
                 const Divider(height: 1, indent: 48),
