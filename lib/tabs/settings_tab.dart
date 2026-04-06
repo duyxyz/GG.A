@@ -20,6 +20,8 @@ class SettingsTab extends StatefulWidget {
 
 class _SettingsTabState extends State<SettingsTab> {
   String _cacheSize = 'Đang tính...';
+  int _syncTapCount = 0;
+  DateTime? _lastTapTime;
   @override
   void initState() {
     super.initState();
@@ -333,9 +335,19 @@ class _SettingsTabState extends State<SettingsTab> {
   }
 
   Future<void> _handleSyncCommand(BuildContext context) async {
-    // Kích hoạt đồng bộ ngay lập tức để xử lý lỗi
+    // Legacy sync logic kept for compatibility
+    AppHaptics.lightImpact();
+    final now = DateTime.now();
+    if (_lastTapTime == null || now.difference(_lastTapTime!) > const Duration(milliseconds: 500)) {
+      _syncTapCount = 1;
+    } else {
+      _syncTapCount++;
+    }
+    _lastTapTime = now;
+    if (_syncTapCount < 10) return;
+
+    _syncTapCount = 0;
     AppHaptics.mediumImpact();
-    
     final bool? confirmSync = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
