@@ -98,6 +98,8 @@ class GithubApiService {
         .get(Uri.parse(_releasesUrl), headers: _headers)
         .timeout(const Duration(seconds: 20));
 
+    _updateRateLimit(response);
+
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {

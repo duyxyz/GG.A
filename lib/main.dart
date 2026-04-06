@@ -38,7 +38,8 @@ class AppDependencies {
     const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbHdkdXB2aG15cG1ranhjeHByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTc3NzEsImV4cCI6MjA4ODYzMzc3MX0.UikH-oZ3vC72RL8PPIzgUr6N12Mq6Pk8aGLqri7PGiM';
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
     
-    // 2. Services
+    // 2. Core ViewModels & Services
+    final configViewModel = AppConfigViewModel(prefs);
     await FavoriteService.init();
     
     final githubApi = GithubApiService(
@@ -46,7 +47,7 @@ class AppDependencies {
       owner: 'duyxyz',
       imageRepo: '12A1.Galary',
       appRepo: '12A1.Android',
-      onRateLimitUpdate: (val) => AppDependencies.instance.configViewModel.updateApiRemaining(val),
+      onRateLimitUpdate: configViewModel.updateApiRemaining,
     );
     final supabaseApi = SupabaseApiService(Supabase.instance.client);
 
@@ -54,9 +55,9 @@ class AppDependencies {
     final imageRepo = ImageRepository(githubApi, supabaseApi);
     final updateRepo = UpdateRepository(githubApi);
 
-    // 4. ViewModels
+    // 4. Finalize Container
     _instance = AppDependencies(
-      configViewModel: AppConfigViewModel(prefs),
+      configViewModel: configViewModel,
       homeViewModel: HomeViewModel(imageRepo),
       updateViewModel: UpdateViewModel(updateRepo),
       imageRepository: imageRepo,
