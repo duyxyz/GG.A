@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
@@ -317,9 +318,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(bgOpacity),
-      body: Stack(
-        children: [
-          GestureDetector(
+      body: SafeArea(
+        child: Stack(
+          children: [
+            GestureDetector(
             onScaleStart: _onScaleStart,
             onScaleUpdate: _onScaleUpdate,
             onScaleEnd: _onScaleEnd,
@@ -370,18 +372,19 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                             ),
                           ),
                         ),
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
           if (_isDownloading) _buildLoadingOverlay('Đang lưu ảnh...'),
           if (_isDeleting) _buildLoadingOverlay('Đang xóa ảnh...'),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBottomSheet(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
