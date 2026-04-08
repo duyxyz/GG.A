@@ -137,11 +137,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
           _resetAnim!.forward();
           return;
         }
-        _isDismissing = false;
         Navigator.of(context).pop();
       } else {
-        _isDismissing = false;
         setState(() {
+          _isDismissing = false;
           _dismissOffset = Offset.zero;
           _dismissScale = 1.0;
         });
