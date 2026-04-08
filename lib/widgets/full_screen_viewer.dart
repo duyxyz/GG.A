@@ -311,10 +311,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
 
   @override
   Widget build(BuildContext context) {
-    double bgOpacity = (_isDismissing || _isCustomDismissing)
-        ? (1.0 - (_dismissOffset.distance / 300)).clamp(0.0, 1.0)
-        : 1.0;
-    if (_isCustomDismissing && _resetAnim != null) bgOpacity *= (1.0 - _resetAnim!.value);
+    double bgOpacity = 1.0;
+    if (_isCustomDismissing && _resetAnim != null) {
+      bgOpacity = (1.0 - _resetAnim!.value).clamp(0.0, 1.0);
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(bgOpacity),
