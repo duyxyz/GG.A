@@ -96,8 +96,11 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         _offset = (focal - center) * (1 - k) + _offset * k;
         _scale = newScale;
       } else if (_isDismissing) {
-        _dismissOffset += details.focalPointDelta;
-        _dismissScale = (1.0 - (_dismissOffset.distance / 1500)).clamp(0.6, 1.0);
+        // Chỉ cho phép vuốt dọc xuống
+        double deltaY = details.focalPointDelta.dy;
+        double newDy = _dismissOffset.dy + deltaY;
+        _dismissOffset = Offset(0, newDy > 0 ? newDy : 0);
+        _dismissScale = (1.0 - (_dismissOffset.dy / 1500)).clamp(0.8, 1.0);
       } else if (_scale > 1.01) {
         _offset += details.focalPointDelta;
       }
@@ -106,7 +109,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
 
   void _onScaleEnd(ScaleEndDetails details) {
     if (_isDismissing) {
-      if (_dismissOffset.distance > 100 || details.velocity.pixelsPerSecond.distance > 500) {
+      // Chỉ thoát nếu vuốt xuống đủ sâu hoặc tốc độ đủ nhanh
+      if (_dismissOffset.dy > 120 || details.velocity.pixelsPerSecond.dy > 600) {
         final isBrokenFavorite = widget.heroTag.startsWith('fav-') && !_isFavorite;
         if (isBrokenFavorite) {
           setState(() {
