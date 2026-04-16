@@ -70,6 +70,32 @@ class _MainScreenState extends State<MainScreen>
     UpdateBottomSheet.show(context, release);
   }
 
+  Widget _buildAnimatedTab(int index, IconData iconData) {
+    final animation = _tabController.animation!;
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, _) {
+        final double progress = (1.0 - (animation.value - index).abs()).clamp(
+          0.0,
+          1.0,
+        );
+
+        return Tab(
+          icon: Icon(
+            iconData,
+            size: 28,
+            fill: progress > 0.5 ? 1.0 : 0.0,
+            color: Color.lerp(
+              Theme.of(context).colorScheme.onSurfaceVariant,
+              Theme.of(context).colorScheme.primary,
+              progress,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final homeVM = AppDependencies.instance.homeViewModel;
@@ -126,41 +152,12 @@ class _MainScreenState extends State<MainScreen>
                             ).colorScheme.onSurfaceVariant,
                             indicatorColor: appBarTextColor,
                             dividerColor: Colors.transparent,
-                            tabs: List.generate(4, (index) {
-                              final animation = _tabController.animation!;
-                              final icons = [
-                                Symbols.home,
-                                Symbols.favorite,
-                                Symbols.add_circle,
-                                Symbols.settings,
-                              ];
-
-                              return AnimatedBuilder(
-                                animation: animation,
-                                builder: (context, _) {
-                                  double progress =
-                                      (1.0 - (animation.value - index).abs())
-                                          .clamp(0.0, 1.0);
-
-                                  return Tab(
-                                    icon: Icon(
-                                      icons[index],
-                                      size: 28,
-                                      fill: progress > 0.5 ? 1.0 : 0.0,
-                                      weight: 400 + (200 * progress),
-                                      grade: progress > 0.5 ? 0.25 : 0.0,
-                                      color: progress > 0.5
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.primary
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                    ),
-                                  );
-                                },
-                              );
-                            }),
+                            tabs: [
+                              _buildAnimatedTab(0, Symbols.home_rounded),
+                              _buildAnimatedTab(1, Symbols.favorite_rounded),
+                              _buildAnimatedTab(2, Symbols.add_circle_rounded),
+                              _buildAnimatedTab(3, Symbols.settings_rounded),
+                            ],
                             onTap: (index) {
                               if (index == _currentIndex) {
                                 if (_nestedScrollController.hasClients) {
