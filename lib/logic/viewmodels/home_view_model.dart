@@ -12,12 +12,22 @@ class HomeViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String _error = "";
   StreamSubscription? _metadataSubscription;
+  Timer? _debounceTimer;
 
   List<GalleryImage> get images => _images;
   bool get isLoading => _isLoading;
   String get error => _error;
 
-  Future<void> loadImages() async {
+  Future<void> loadImages({bool force = false}) async {
+    if (_isLoading && !force) return;
+
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+      await _performLoad();
+    });
+  }
+
+  Future<void> _performLoad() async {
     if (_isLoading) return;
 
     // 1. Tải từ Cache trước để giao diện hiện lên ngay lập tức (chỉ khi danh sách hiện tại trống)
@@ -50,12 +60,15 @@ class HomeViewModel extends ChangeNotifier {
 
   void _setupRealtimeSubscription() {
     _metadataSubscription?.cancel();
-    _metadataSubscription = _imageRepository.watchMetadata().listen((newMetadata) {
+    _metadataSubscription = _imageRepository.watchMetadata().listen((
+      newMetadata,
+    ) {
       final currentIndices = _images.map((img) => img.index).toSet();
       final newIndices = newMetadata.keys.toSet();
 
       // Check if any image was added or deleted by comparing indices
-      if (newIndices.length != currentIndices.length || !newIndices.containsAll(currentIndices)) {
+      if (newIndices.length != currentIndices.length ||
+          !newIndices.containsAll(currentIndices)) {
         // Mismatch found, need to reload full list to reflect file changes (URLs, SHAs) from GitHub
         loadImages();
       } else {
@@ -77,7 +90,40 @@ class HomeViewModel extends ChangeNotifier {
     });
   }
 
-  Future<void> uploadImage(String filename, Uint8List bytes, int width, int height) async {
+  Future<bool> uploadImages(List<Map<String, dynamic>> images) async {
+    _isLoading = true;
+    _error = "";
+    notifyListeners();
+    try {
+      for (final image in images) {
+        // Since we don't have dimensions here easily from the batch, we can use 0 or extract them
+        // Better yet, use the repository method if it's updated.
+        // For now, sequentially calling the repo upload.
+        await _imageRepository.uploadImage(
+          image['name'] as String,
+          image['bytes'] as Uint8List,
+          0, // placeholder width
+          0, // placeholder height
+        );
+      }
+      await loadImages();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> uploadImage(
+    String filename,
+    Uint8List bytes,
+    int width,
+    int height,
+  ) async {
     _isLoading = true;
     notifyListeners();
     try {

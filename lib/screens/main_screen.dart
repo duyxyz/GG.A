@@ -5,8 +5,8 @@ import '../tabs/add_tab.dart';
 import '../tabs/favorites_tab.dart';
 import '../tabs/home_tab.dart';
 import '../tabs/settings_tab.dart';
-import '../utils/haptics.dart';
 import '../utils/update_manager.dart';
+import '../logic/viewmodels/home_view_model.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -15,13 +15,28 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-  final ScrollController _homeScrollController = ScrollController();
+class _MainScreenState extends State<MainScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  late ScrollController _nestedScrollController;
+  final GlobalKey<HomeTabState> _homeTabKey = GlobalKey<HomeTabState>();
+  final GlobalKey<FavoritesTabState> _favoritesTabKey =
+      GlobalKey<FavoritesTabState>();
+  final GlobalKey<AddTabState> _addTabKey = GlobalKey<AddTabState>();
+  final GlobalKey<SettingsTabState> _settingsTabKey =
+      GlobalKey<SettingsTabState>();
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _nestedScrollController = ScrollController();
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        setState(() {});
+      }
+    });
+
     // Initialize data through ViewModels
     AppDependencies.instance.homeViewModel.loadImages();
     _checkForUpdateSilent();
@@ -30,7 +45,8 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
-    _homeScrollController.dispose();
+    _tabController.dispose();
+    _nestedScrollController.dispose();
     super.dispose();
   }
 
@@ -67,107 +83,218 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildNavItem(IconData activeIcon, IconData icon, int index) {
-    final isSelected = _selectedIndex == index;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        if (_selectedIndex == 0 && index == 0) {
-          if (_homeScrollController.hasClients) {
-            _homeScrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        }
-        AppHaptics.lightImpact();
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Icon(
-          isSelected ? activeIcon : icon,
-          size: 32,
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final homeVM = AppDependencies.instance.homeViewModel;
+    final appBarTextColor = Theme.of(context).colorScheme.primary;
 
     return PopScope(
-      canPop: _selectedIndex == 0,
+      canPop: _tabController.index == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        if (_selectedIndex != 0) {
-          setState(() {
-            _selectedIndex = 0;
-          });
+        if (_tabController.index != 0) {
+          _tabController.animateTo(0);
         }
       },
       child: Scaffold(
         body: SafeArea(
-          child: ListenableBuilder(
-            listenable: homeVM,
-            builder: (context, _) {
-              return IndexedStack(
-                index: _selectedIndex,
-                children: [
-                  HomeTab(
-                    viewModel: homeVM,
-                    scrollController: _homeScrollController,
-                  ),
-                  FavoritesTab(
-                    allImages: homeVM.images,
-                    isLoading: homeVM.isLoading,
-                  ),
-                  AddTab(
-                    viewModel: homeVM,
-                  ),
-                  SettingsTab(isSelected: _selectedIndex == 3),
-                ],
-              );
+          bottom: false,
+          child: NestedScrollView(
+            controller: _nestedScrollController,
+
+            floatHeaderSlivers: true,
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                ListenableBuilder(
+                  listenable: _tabController.animation!,
+                  builder: (context, _) {
+                    final animation = _tabController.animation;
+                    double animValue = _tabController.index.toDouble();
+                    if (animation != null) {
+                      animValue = animation.value;
+                    }
+
+                    // factor = 1.0 at index 0, fades to 0.0 as we move to index 1, 2, 3
+                    final homeFactor = (1.0 - animValue).clamp(0.0, 1.0);
+                    final currentExpandedHeight = (homeFactor * 44.0) + 48.0;
+
+                    return SliverOverlapAbsorber(
+                      handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                        context,
+                      ),
+                      sliver: SliverPersistentHeader(
+                        pinned: true,
+                        delegate: _MainAppBarDelegate(
+                          paddingTop: 0.0,
+                          expandedHeight: currentExpandedHeight,
+                          appBarTextColor: appBarTextColor,
+                          homeVM: homeVM,
+                          forceElevated: innerBoxIsScrolled,
+                          tabBar: TabBar(
+                            controller: _tabController,
+                            indicatorSize: TabBarIndicatorSize.label,
+                            labelColor: appBarTextColor,
+                            unselectedLabelColor: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                            indicatorColor: appBarTextColor,
+                            dividerColor: Colors.transparent,
+                            tabs: const [
+                              Tab(icon: Icon(Icons.home_rounded, size: 28)),
+                              Tab(icon: Icon(Icons.favorite_rounded, size: 28)),
+                              Tab(
+                                icon: Icon(Icons.add_circle_rounded, size: 28),
+                              ),
+                              Tab(icon: Icon(Icons.settings_rounded, size: 28)),
+                            ],
+                            onTap: (index) {
+                              if (index == _tabController.index) {
+                                if (_nestedScrollController.hasClients) {
+                                  _nestedScrollController.animateTo(
+                                    0,
+                                    duration: const Duration(milliseconds: 500),
+                                    curve: Curves.easeOutQuart,
+                                  );
+                                }
+                                switch (index) {
+                                  case 0:
+                                    _homeTabKey.currentState?.scrollToTop();
+                                    break;
+                                  case 1:
+                                    _favoritesTabKey.currentState
+                                        ?.scrollToTop();
+                                    break;
+                                  case 2:
+                                    _addTabKey.currentState?.scrollToTop();
+                                    break;
+                                  case 3:
+                                    _settingsTabKey.currentState?.scrollToTop();
+                                    break;
+                                }
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ];
             },
+            body: TabBarView(
+              controller: _tabController,
+              children: [
+                HomeTab(key: _homeTabKey, viewModel: homeVM),
+                FavoritesTab(key: _favoritesTabKey, viewModel: homeVM),
+                AddTab(
+                  key: _addTabKey,
+                  viewModel: homeVM,
+                  onStateChanged: () => setState(() {}),
+                ),
+                SettingsTab(
+                  key: _settingsTabKey,
+                  isSelected: _tabController.index == 3,
+                ),
+              ],
+            ),
           ),
         ),
-        bottomNavigationBar: _buildBottomNav(),
       ),
     );
   }
+}
 
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: 0.2),
-            width: 1.0,
+class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
+  final double paddingTop;
+  final double expandedHeight;
+  final Color appBarTextColor;
+  final HomeViewModel homeVM;
+  final bool forceElevated;
+  final Widget tabBar;
+
+  _MainAppBarDelegate({
+    required this.paddingTop,
+    required this.expandedHeight,
+    required this.appBarTextColor,
+    required this.homeVM,
+    required this.forceElevated,
+    required this.tabBar,
+  });
+
+  @override
+  double get maxExtent => paddingTop + expandedHeight;
+
+  @override
+  double get minExtent => paddingTop + 48.0;
+
+  @override
+  bool shouldRebuild(covariant _MainAppBarDelegate oldDelegate) {
+    return expandedHeight != oldDelegate.expandedHeight ||
+        paddingTop != oldDelegate.paddingTop ||
+        appBarTextColor != oldDelegate.appBarTextColor ||
+        homeVM != oldDelegate.homeVM ||
+        forceElevated != oldDelegate.forceElevated;
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final double currentHeight = maxExtent - shrinkOffset;
+    final double currentFlexHeight = currentHeight - minExtent;
+    final double factor = (currentFlexHeight / 44.0).clamp(0.0, 1.0);
+
+    return Material(
+      color: Theme.of(context).colorScheme.surface,
+      elevation: forceElevated || overlapsContent ? 2.0 : 0.0,
+      surfaceTintColor: Colors.transparent,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: paddingTop - ((1.0 - factor) * 44.0),
+            left: 0,
+            right: 0,
+            height: 44.0,
+            child: Opacity(
+              opacity: factor,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Gay Group',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 22,
+                          color: appBarTextColor,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Center(
+                        child: Text(
+                          '${homeVM.images.length} ảnh',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                                color: appBarTextColor,
+                              ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
-      child: BottomAppBar(
-        padding: EdgeInsets.zero,
-        elevation: 0,
-        height: 48.0,
-        color: Colors.transparent,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildNavItem(Icons.home_rounded, Icons.home_outlined, 0),
-            _buildNavItem(Icons.favorite_rounded, Icons.favorite_outline_rounded, 1),
-            _buildNavItem(Icons.add_circle_rounded, Icons.add_circle_outline, 2),
-            _buildNavItem(Icons.settings_rounded, Icons.settings_outlined, 3),
-          ],
-        ),
+          Positioned(bottom: 0, left: 0, right: 0, height: 48.0, child: tabBar),
+        ],
       ),
     );
   }
