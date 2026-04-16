@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/symbols.dart';
 import '../main.dart';
 import '../tabs/add_tab.dart';
 import '../tabs/favorites_tab.dart';
@@ -7,7 +8,6 @@ import '../tabs/home_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../utils/update_manager.dart';
 import '../logic/viewmodels/home_view_model.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import '../widgets/update_bottom_sheet.dart';
 
 class MainScreen extends StatefulWidget {
@@ -70,7 +70,7 @@ class _MainScreenState extends State<MainScreen>
     UpdateBottomSheet.show(context, release);
   }
 
-  Widget _buildAnimatedTab(int index, IconData outline, IconData filled) {
+  Widget _buildAnimatedTab(int index, IconData iconData) {
     final animation = _tabController.animation!;
     return AnimatedBuilder(
       animation: animation,
@@ -82,8 +82,9 @@ class _MainScreenState extends State<MainScreen>
 
         return Tab(
           icon: Icon(
-            progress > 0.5 ? filled : outline,
+            IconData(iconData.codePoint, fontFamily: 'CustomSymbols'),
             size: 28,
+            fill: progress > 0.5 ? 1.0 : 0.0,
             color: Color.lerp(
               Theme.of(context).colorScheme.onSurfaceVariant,
               Theme.of(context).colorScheme.primary,
@@ -113,7 +114,6 @@ class _MainScreenState extends State<MainScreen>
           bottom: false,
           child: NestedScrollView(
             controller: _nestedScrollController,
-
             floatHeaderSlivers: true,
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
@@ -152,24 +152,13 @@ class _MainScreenState extends State<MainScreen>
                             indicatorColor: appBarTextColor,
                             dividerColor: Colors.transparent,
                             tabs: List.generate(4, (index) {
-                              final outlinedIcons = [
-                                Icons.home_outlined,
-                                Icons.favorite_outline_rounded,
-                                Icons.add_circle_outline_rounded,
-                                Icons.settings_outlined,
+                              final icons = [
+                                Symbols.home_rounded,
+                                Symbols.favorite_rounded,
+                                Symbols.add_circle_rounded,
+                                Symbols.settings_rounded,
                               ];
-                              final filledIcons = [
-                                Icons.home_rounded,
-                                Icons.favorite_rounded,
-                                Icons.add_circle_rounded,
-                                Icons.settings_rounded,
-                              ];
-
-                              return _buildAnimatedTab(
-                                index,
-                                outlinedIcons[index],
-                                filledIcons[index],
-                              );
+                              return _buildAnimatedTab(index, icons[index]);
                             }),
                             onTap: (index) {
                               if (index == _currentIndex) {

@@ -109,6 +109,11 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
+  fonts:
+    - family: CustomSymbols
+      fonts:
+        - asset: "lib/assets/MaterialSymbolsOutlined[FILL,GRAD,opsz,wght].ttf"
+
 flutter_launcher_icons:
   android: true
   ios: false
