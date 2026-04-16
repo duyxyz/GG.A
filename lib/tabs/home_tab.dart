@@ -88,8 +88,6 @@ class HomeTabState extends State<HomeTab> with AutomaticKeepAliveClientMixin {
                     );
                   },
                 ),
-              if (viewModel.isLoading && viewModel.images.isNotEmpty)
-                const SliverToBoxAdapter(child: LinearProgressIndicator()),
             ],
           );
         },

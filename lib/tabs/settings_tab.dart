@@ -337,15 +337,17 @@ class SettingsTabState extends State<SettingsTab>
             );
             await updateVM.checkForUpdates();
             if (updateVM.latestRelease != null) {
-              if (mounted)
+              if (context.mounted) {
                 _showManualUpdateDialog(context, updateVM.latestRelease);
+              }
             } else {
-              if (mounted)
+              if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Bạn đang sử dụng phiên bản mới nhất!'),
                   ),
                 );
+              }
             }
           }
         },
@@ -400,7 +402,7 @@ class SettingsTabState extends State<SettingsTab>
             }
           }
         }
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã dọn dẹp bộ nhớ đệm thành công!')),
           );
@@ -585,7 +587,7 @@ class SettingsTabState extends State<SettingsTab>
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Màu đang chọn: #${HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor().value.toRadixString(16).substring(2).toUpperCase()}',
+                  'Màu đang chọn: #${HSVColor.fromAHSV(1.0, hue, 0.8, 0.9).toColor().toARGB32().toRadixString(16).substring(2).toUpperCase()}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,

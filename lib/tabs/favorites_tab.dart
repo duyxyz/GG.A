@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import '../widgets/expressive_loading_indicator.dart';
 
 import '../logic/viewmodels/home_view_model.dart';
 import '../main.dart';
@@ -54,7 +55,17 @@ class FavoritesTabState extends State<FavoritesTab>
                       .where((img) => favoriteShas.contains(img.sha))
                       .toList();
 
-                  if (favoriteImages.isEmpty && !widget.viewModel.isLoading) {
+                  if (widget.viewModel.images.isEmpty &&
+                      widget.viewModel.isLoading) {
+                    return const SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Center(
+                        child: ExpressiveLoadingIndicator(isContained: true),
+                      ),
+                    );
+                  }
+
+                  if (favoriteImages.isEmpty) {
                     return SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
@@ -99,6 +110,7 @@ class FavoritesTabState extends State<FavoritesTab>
                           itemBuilder: (context, index) {
                             final image = favoriteImages[index];
                             return ImageGridItem(
+                              key: ValueKey('fav-${image.sha}'),
                               image: image,
                               heroTag: 'fav-${image.index}',
                             );

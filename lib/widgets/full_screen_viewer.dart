@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -6,6 +5,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:gal/gal.dart';
 import 'package:path/path.dart' as p;
+import 'expressive_loading_indicator.dart';
 
 import '../main.dart';
 import '../data/models/gallery_image.dart';
@@ -31,8 +31,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   double _scale = 1.0;
   double _baseScale = 1.0;
   Offset _offset = Offset.zero;
-  Offset _baseOffset = Offset.zero;
-  Offset _startFocalPoint = Offset.zero;
 
   bool _isDismissing = false;
   bool _isCustomDismissing = false;
@@ -68,8 +66,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   void _onScaleStart(ScaleStartDetails details) {
     _resetAnim?.stop();
     _baseScale = _scale;
-    _baseOffset = _offset;
-    _startFocalPoint = details.localFocalPoint;
+    _baseScale = _scale;
 
     _isDismissing =
         details.pointerCount == 1 && _scale <= 1.01 && _offset.distance < 5;
@@ -83,8 +80,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
           _dismissOffset = Offset.zero;
           _dismissScale = 1.0;
           _baseScale = _scale;
-          _baseOffset = _offset;
-          _startFocalPoint = details.localFocalPoint;
+          _baseScale = _scale;
           return;
         }
 
@@ -111,15 +107,20 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
   void _onScaleEnd(ScaleEndDetails details) {
     if (_isDismissing) {
       // Chỉ thoát nếu vuốt xuống đủ sâu hoặc tốc độ đủ nhanh
-      if (_dismissOffset.dy > 120 || details.velocity.pixelsPerSecond.dy > 600) {
-        final isBrokenFavorite = widget.heroTag.startsWith('fav-') && !_isFavorite;
+      if (_dismissOffset.dy > 120 ||
+          details.velocity.pixelsPerSecond.dy > 600) {
+        final isBrokenFavorite =
+            widget.heroTag.startsWith('fav-') && !_isFavorite;
         if (isBrokenFavorite) {
           setState(() {
             _isDismissing = false;
             _isCustomDismissing = true;
           });
           _resetAnim?.dispose();
-          _resetAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
+          _resetAnim = AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 250),
+          );
           final startScale = _dismissScale;
           final startOffset = _dismissOffset;
           _resetAnim!.addListener(() {
@@ -174,19 +175,27 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     try {
       final downloadUrl = '${widget.image.downloadUrl}?v=${widget.image.sha}';
       final response = await http.get(Uri.parse(downloadUrl));
-      if (response.statusCode != 200) throw Exception("Server trả về lỗi: ${response.statusCode}");
+      if (response.statusCode != 200) {
+        throw Exception("Server trả về lỗi: ${response.statusCode}");
+      }
 
       final Uint8List imageBytes = response.bodyBytes;
-      if (imageBytes.isEmpty) throw Exception("Dữ liệu ảnh trống");
+      if (imageBytes.isEmpty) {
+        throw Exception("Dữ liệu ảnh trống");
+      }
 
       final Uint8List jpegBytes = (await FlutterImageCompress.compressWithList(
-        imageBytes, format: CompressFormat.jpeg, quality: 95,
-      ))!;
+        imageBytes,
+        format: CompressFormat.jpeg,
+        quality: 95,
+      ));
 
       final hasAccess = await Gal.hasAccess();
       if (!hasAccess) {
         final granted = await Gal.requestAccess();
-        if (!granted) throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
+        if (!granted) {
+          throw Exception("Bạn chưa cấp quyền lưu ảnh cho ứng dụng");
+        }
       }
 
       final fileName = p.basenameWithoutExtension(widget.image.downloadUrl);
@@ -194,13 +203,23 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã lưu vào bộ sưu tập'), behavior: SnackBarBehavior.floating, backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Đã lưu vào bộ sưu tập'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}'), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(
+              'Lỗi: ${e.toString().replaceAll("Exception:", "").trim()}',
+            ),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -214,16 +233,22 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     if (_isDeleting) return;
     Navigator.of(sheetContext).pop();
     AppHaptics.lightImpact();
-    
+
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Xóa ảnh này ?'),
           actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Hủy')),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Hủy'),
+            ),
             FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('Xóa'),
             ),
@@ -237,12 +262,16 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     try {
       await AppDependencies.instance.homeViewModel.deleteImage(widget.image);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa ảnh thành công')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Đã xóa ảnh thành công')));
         Navigator.of(context).pop(true);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi xóa ảnh: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi xóa ảnh: $e')));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
@@ -274,7 +303,10 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đóng')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
         ],
       ),
     );
@@ -286,18 +318,27 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
           Text(value, style: const TextStyle(fontSize: 14)),
         ],
       ),
     );
   }
 
-  void _animateReset({required double targetScale, required Offset targetOffset}) {
+  void _animateReset({
+    required double targetScale,
+    required Offset targetOffset,
+  }) {
     final startScale = _scale;
     final startOffset = _offset;
     _resetAnim?.dispose();
-    _resetAnim = AnimationController(vsync: this, duration: const Duration(milliseconds: 250));
+    _resetAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
     final curved = CurvedAnimation(parent: _resetAnim!, curve: Curves.easeOut);
     curved.addListener(() {
       setState(() {
@@ -317,35 +358,46 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor.withOpacity(bgOpacity),
+      backgroundColor: Theme.of(
+        context,
+      ).scaffoldBackgroundColor.withValues(alpha: bgOpacity),
       body: SafeArea(
         child: Stack(
           children: [
             GestureDetector(
-            onScaleStart: _onScaleStart,
-            onScaleUpdate: _onScaleUpdate,
-            onScaleEnd: _onScaleEnd,
-            onDoubleTap: _onDoubleTap,
-            onLongPress: () {
-              AppHaptics.mediumImpact();
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                builder: (context) => _buildBottomSheet(context),
-              );
-            },
-            behavior: HitTestBehavior.opaque,
-            child: SizedBox.expand(
-              child: Transform.translate(
-                offset: (_isDismissing || _isCustomDismissing) ? _dismissOffset : Offset.zero,
-                child: Transform.scale(
-                  scale: (_isDismissing || _isCustomDismissing) ? _dismissScale : 1.0,
-                  child: Center(
-                    child: Transform(
-                      alignment: Alignment.center,
-                      transform: Matrix4.identity()
-                        ..translate(_offset.dx, _offset.dy)
-                        ..scale(_scale),
+              onScaleStart: _onScaleStart,
+              onScaleUpdate: _onScaleUpdate,
+              onScaleEnd: _onScaleEnd,
+              onDoubleTap: _onDoubleTap,
+              onLongPress: () {
+                AppHaptics.mediumImpact();
+                showModalBottomSheet(
+                  context: context,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => _buildBottomSheet(context),
+                );
+              },
+              behavior: HitTestBehavior.opaque,
+              child: SizedBox.expand(
+                child: Transform.translate(
+                  offset: (_isDismissing || _isCustomDismissing)
+                      ? _dismissOffset
+                      : Offset.zero,
+                  child: Transform.scale(
+                    scale: (_isDismissing || _isCustomDismissing)
+                        ? _dismissScale
+                        : 1.0,
+                    child: Center(
+                      child: Transform(
+                        alignment: Alignment.center,
+                        transform:
+                            Matrix4.translationValues(
+                              _offset.dx,
+                              _offset.dy,
+                              0.0,
+                            )..multiply(
+                              Matrix4.diagonal3Values(_scale, _scale, 1.0),
+                            ),
                         child: Hero(
                           tag: widget.heroTag,
                           child: AspectRatio(
@@ -364,11 +416,19 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                                 fadeInDuration: Duration.zero,
                                 fadeOutDuration: Duration.zero,
                                 memCacheWidth:
-                                    (400 * MediaQuery.of(context).devicePixelRatio).round(),
-                                placeholder: (context, url) => const _RotatingLoader(),
+                                    (400 *
+                                            MediaQuery.of(
+                                              context,
+                                            ).devicePixelRatio)
+                                        .round(),
+                                placeholder: (context, url) => const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               ),
-                              errorWidget: (context, url, error) => Icon(Icons.error,
-                                  color: Theme.of(context).colorScheme.error),
+                              errorWidget: (context, url, error) => Icon(
+                                Icons.error,
+                                color: Theme.of(context).colorScheme.error,
+                              ),
                             ),
                           ),
                         ),
@@ -378,13 +438,13 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
                 ),
               ),
             ),
-          if (_isDownloading) _buildLoadingOverlay('Đang lưu ảnh...'),
-          if (_isDeleting) _buildLoadingOverlay('Đang xóa ảnh...'),
-        ],
+            if (_isDownloading) _buildLoadingOverlay('Đang lưu ảnh...'),
+            if (_isDeleting) _buildLoadingOverlay('Đang xóa ảnh...'),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildBottomSheet(BuildContext context) {
     bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -402,7 +462,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.grey.withOpacity(0.3),
+              color: Colors.grey.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -411,10 +471,38 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                _buildActionBtn(Icons.file_download_outlined, Theme.of(context).colorScheme.primary, () => _downloadImage(context), isDark),
-                _buildActionBtn(_isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded, Theme.of(context).colorScheme.primary, () { Navigator.pop(context); _toggleFavorite(); }, isDark),
-                _buildActionBtn(Icons.info_outline_rounded, Theme.of(context).colorScheme.primary, () { Navigator.pop(context); _showInfoDialog(); }, isDark),
-                _buildActionBtn(Icons.delete_outline_rounded, Theme.of(context).colorScheme.primary, () => _deleteImage(context), isDark),
+                _buildActionBtn(
+                  Icons.file_download_outlined,
+                  Theme.of(context).colorScheme.primary,
+                  () => _downloadImage(context),
+                  isDark,
+                ),
+                _buildActionBtn(
+                  _isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  Theme.of(context).colorScheme.primary,
+                  () {
+                    Navigator.pop(context);
+                    _toggleFavorite();
+                  },
+                  isDark,
+                ),
+                _buildActionBtn(
+                  Icons.info_outline_rounded,
+                  Theme.of(context).colorScheme.primary,
+                  () {
+                    Navigator.pop(context);
+                    _showInfoDialog();
+                  },
+                  isDark,
+                ),
+                _buildActionBtn(
+                  Icons.delete_outline_rounded,
+                  Theme.of(context).colorScheme.primary,
+                  () => _deleteImage(context),
+                  isDark,
+                ),
               ],
             ),
           ),
@@ -423,12 +511,17 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
     );
   }
 
-  Widget _buildActionBtn(IconData icon, Color color, VoidCallback onPressed, bool isDark) {
+  Widget _buildActionBtn(
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+    bool isDark,
+  ) {
     return IconButton.filledTonal(
       onPressed: onPressed,
       icon: Icon(icon, size: 26),
       style: IconButton.styleFrom(
-        backgroundColor: color.withOpacity(0.12),
+        backgroundColor: color.withValues(alpha: 0.12),
         foregroundColor: color,
         padding: const EdgeInsets.all(16),
       ),
@@ -442,64 +535,13 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer>
         child: Card(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const _RotatingLoader(),
-              const SizedBox(height: 16),
-              Text(text),
-            ]),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _RotatingLoader extends StatefulWidget {
-  const _RotatingLoader();
-
-  @override
-  State<_RotatingLoader> createState() => _RotatingLoaderState();
-}
-
-class _RotatingLoaderState extends State<_RotatingLoader> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final themeColor = Theme.of(context).colorScheme.primary;
-    
-    return Center(
-      child: Container(
-        width: 72,
-        height: 72,
-        decoration: BoxDecoration(
-          color: themeColor.withOpacity(0.15),
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: RotationTransition(
-            turns: _controller,
-            child: Image.asset(
-              'lib/assets/loading-indicator.png',
-              width: 48,
-              height: 48,
-              color: themeColor,
-              colorBlendMode: BlendMode.srcIn,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ExpressiveLoadingIndicator(isContained: true),
+                const SizedBox(height: 16),
+                Text(text),
+              ],
             ),
           ),
         ),

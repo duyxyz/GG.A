@@ -26,6 +26,8 @@ class _MainScreenState extends State<MainScreen>
   final GlobalKey<SettingsTabState> _settingsTabKey =
       GlobalKey<SettingsTabState>();
 
+  int _currentIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +35,9 @@ class _MainScreenState extends State<MainScreen>
     _nestedScrollController = ScrollController();
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() {});
+        setState(() {
+          _currentIndex = _tabController.index;
+        });
       }
     });
 
@@ -148,7 +152,7 @@ class _MainScreenState extends State<MainScreen>
                               Tab(icon: Icon(Icons.settings_rounded, size: 28)),
                             ],
                             onTap: (index) {
-                              if (index == _tabController.index) {
+                              if (index == _currentIndex) {
                                 if (_nestedScrollController.hasClients) {
                                   _nestedScrollController.animateTo(
                                     0,

@@ -1,13 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
   static const String supabaseUrl = 'https://pplwdupvhmypmkjxcxpr.supabase.co';
-  static const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbHdkdXB2aG15cG1ranhjeHByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTc3NzEsImV4cCI6MjA4ODYzMzc3MX0.UikH-oZ3vC72RL8PPIzgUr6N12Mq6Pk8aGLqri7PGiM';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBwbHdkdXB2aG15cG1ranhjeHByIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMwNTc3NzEsImV4cCI6MjA4ODYzMzc3MX0.UikH-oZ3vC72RL8PPIzgUr6N12Mq6Pk8aGLqri7PGiM';
   static bool _initialized = false;
 
   static SupabaseClient get client {
     if (!_initialized) {
-      throw Exception('Supabase has not been initialized. Check your environment variables.');
+      throw Exception(
+        'Supabase has not been initialized. Check your environment variables.',
+      );
     }
     return Supabase.instance.client;
   }
@@ -16,17 +20,16 @@ class SupabaseService {
 
   static Future<void> initialize() async {
     if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
-      print('Supabase credentials missing. Supabase functionality will be disabled.');
+      debugPrint(
+        'Supabase credentials missing. Supabase functionality will be disabled.',
+      );
       return;
     }
     try {
-      await Supabase.initialize(
-        url: supabaseUrl,
-        anonKey: supabaseAnonKey,
-      );
+      await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
       _initialized = true;
     } catch (e) {
-      print('Failed to initialize Supabase: $e');
+      debugPrint('Failed to initialize Supabase: $e');
     }
   }
 
@@ -35,7 +38,7 @@ class SupabaseService {
     try {
       await client.from('images').delete().eq('image_index', index);
     } catch (e) {
-      print('Error deleting metadata from Supabase: $e');
+      debugPrint('Error deleting metadata from Supabase: $e');
     }
   }
 
@@ -48,12 +51,16 @@ class SupabaseService {
           .order('image_index', ascending: false);
       return List<Map<String, dynamic>>.from(data);
     } catch (e) {
-      print('Error fetching metadata from Supabase: $e');
+      debugPrint('Error fetching metadata from Supabase: $e');
       return [];
     }
   }
 
-  static Future<void> upsertImageMetadata(int index, int width, int height) async {
+  static Future<void> upsertImageMetadata(
+    int index,
+    int width,
+    int height,
+  ) async {
     if (!_initialized) return;
     try {
       await client.from('images').upsert({
@@ -63,7 +70,7 @@ class SupabaseService {
         'aspect_ratio': width / height,
       });
     } catch (e) {
-      print('Error upserting metadata to Supabase: $e');
+      debugPrint('Error upserting metadata to Supabase: $e');
     }
   }
 
@@ -77,12 +84,14 @@ class SupabaseService {
     throw Exception('Invalid index returned from Supabase RPC.');
   }
 
-  static Future<void> bulkUpsertImageMetadata(List<Map<String, dynamic>> dataList) async {
+  static Future<void> bulkUpsertImageMetadata(
+    List<Map<String, dynamic>> dataList,
+  ) async {
     if (!_initialized || dataList.isEmpty) return;
     try {
       await client.from('images').upsert(dataList);
     } catch (e) {
-      print('Error bulk upserting to Supabase: $e');
+      debugPrint('Error bulk upserting to Supabase: $e');
       rethrow;
     }
   }

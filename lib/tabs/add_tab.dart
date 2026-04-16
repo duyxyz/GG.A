@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../main.dart';
 import '../logic/viewmodels/home_view_model.dart';
 import '../utils/haptics.dart';
 import '../widgets/error_view.dart';
@@ -73,12 +72,18 @@ class AddTabState extends State<AddTab> with AutomaticKeepAliveClientMixin {
           minWidth: 1080,
           minHeight: 1080,
           quality: 85,
+          format: CompressFormat.webp,
         );
+        final imageInfo = await decodeImageFromList(compressed);
         processedImages.add({
-          'name': file.name,
+          'name':
+              'image.webp', // Tên này sẽ được ImageRepository thay thế bằng {index}_{timestamp}.webp
           'bytes': compressed,
+          'width': imageInfo.width,
+          'height': imageInfo.height,
           'path': file.path,
         });
+        imageInfo.dispose();
       }
       setState(() {
         _uploadStatus = 'Đang gửi lên server...';
@@ -145,8 +150,6 @@ class AddTabState extends State<AddTab> with AutomaticKeepAliveClientMixin {
                   context,
                 ),
               ),
-              if (widget.viewModel.isLoading || _isLocalLoading)
-                const SliverToBoxAdapter(child: LinearProgressIndicator()),
 
               SliverPadding(
                 padding: const EdgeInsets.all(16),

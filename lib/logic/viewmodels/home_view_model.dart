@@ -41,7 +41,10 @@ class HomeViewModel extends ChangeNotifier {
 
     _isLoading = true;
     _error = "";
-    notifyListeners();
+    // Chỉ notify nếu chưa notify ở phần cache phía trên hoặc cache trống
+    if (_images.isEmpty) {
+      notifyListeners();
+    }
 
     try {
       _images = await _imageRepository.getImages();
@@ -70,7 +73,7 @@ class HomeViewModel extends ChangeNotifier {
       if (newIndices.length != currentIndices.length ||
           !newIndices.containsAll(currentIndices)) {
         // Mismatch found, need to reload full list to reflect file changes (URLs, SHAs) from GitHub
-        loadImages();
+        loadImages(force: true);
       } else {
         // Same set of images, just update aspect ratios in-place for performance
         bool hasChanges = false;
@@ -96,17 +99,14 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       for (final image in images) {
-        // Since we don't have dimensions here easily from the batch, we can use 0 or extract them
-        // Better yet, use the repository method if it's updated.
-        // For now, sequentially calling the repo upload.
         await _imageRepository.uploadImage(
           image['name'] as String,
           image['bytes'] as Uint8List,
-          0, // placeholder width
-          0, // placeholder height
+          image['width'] as int? ?? 1,
+          image['height'] as int? ?? 1,
         );
       }
-      await loadImages();
+      await loadImages(force: true);
       return true;
     } catch (e) {
       _error = e.toString();
@@ -128,7 +128,7 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _imageRepository.uploadImage(filename, bytes, width, height);
-      await loadImages();
+      await loadImages(force: true);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -140,7 +140,7 @@ class HomeViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _imageRepository.deleteImage(image);
-      await loadImages();
+      await loadImages(force: true);
     } finally {
       _isLoading = false;
       notifyListeners();

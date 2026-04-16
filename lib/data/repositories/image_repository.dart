@@ -38,47 +38,59 @@ class ImageRepository {
     final metadataList = await _supabaseApi.fetchImageMetadata();
 
     // 2. Chuyển đổi trực tiếp sang GalleryImage mà không cần hỏi GitHub
-    final images = metadataList.map((item) {
-      final filename = item['name'] as String?;
-      if (filename == null || filename.isEmpty) return null;
-      
-      final index = item['image_index'] as int;
-      final aspectRatio = (item['aspect_ratio'] as num).toDouble();
-      final sha = item['sha'] as String? ?? '';
-      final size = item['size'] as int? ?? 0;
+    final images = metadataList
+        .map((item) {
+          final filename = item['name'] as String?;
+          if (filename == null || filename.isEmpty) return null;
 
-      return GalleryImage(
-        name: filename,
-        path: filename,
-        sha: sha,
-        size: size,
-        // Tự xây dựng URL GitHub Raw dựa trên tên file
-        downloadUrl: 'https://raw.githubusercontent.com/${_githubApi.owner}/${_githubApi.imageRepo}/refs/heads/main/$filename',
-        index: index,
-        aspectRatio: aspectRatio,
-      );
-    }).whereType<GalleryImage>().toList();
+          final index = item['image_index'] as int;
+          final aspectRatio = (item['aspect_ratio'] as num).toDouble();
+          final sha = item['sha'] as String? ?? '';
+          final size = item['size'] as int? ?? 0;
+
+          return GalleryImage(
+            name: filename,
+            path: filename,
+            sha: sha,
+            size: size,
+            // Tự xây dựng URL GitHub Raw dựa trên tên file
+            downloadUrl:
+                'https://raw.githubusercontent.com/${_githubApi.owner}/${_githubApi.imageRepo}/refs/heads/main/${Uri.encodeComponent(filename)}',
+            index: index,
+            aspectRatio: aspectRatio,
+          );
+        })
+        .whereType<GalleryImage>()
+        .toList();
 
     images.sort((a, b) => b.index.compareTo(a.index));
-    
+
     // Cập nhật bộ nhớ đệm
     _saveToCache(images);
-    
+
     return images;
   }
 
-  Future<void> uploadImage(String filename, Uint8List bytes, int width, int height) async {
-    // 1. Dự trữ index trong Supabase
+  Future<void> uploadImage(
+    String filename,
+    Uint8List bytes,
+    int width,
+    int height,
+  ) async {
+    // 1. Dự trữ index trong Supabase (Số kế tiếp hoặc số bị trống)
     final index = await _supabaseApi.reserveNextImageIndex();
-    final indexedFilename = '${index}_$filename';
 
-    // 2. Tải lên GitHub và lấy thông tin phản hồi (sha, size)
+    // 2. Quy tắc đặt tên: {index}_{chuỗi_thời_gian}.webp
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final indexedFilename = '${index}_$timestamp.webp';
+
+    // 3. Tải lên GitHub và lấy thông tin phản hồi (sha, size)
     final response = await _githubApi.uploadImage(indexedFilename, bytes);
     final content = response['content'] as Map<String, dynamic>;
     final sha = content['sha'] as String;
     final size = content['size'] as int;
 
-    // 3. Lưu toàn bộ metadata vào Supabase
+    // 4. Lưu toàn bộ metadata vào Supabase
     await _supabaseApi.upsertImageMetadata(
       index: index,
       name: indexedFilename,

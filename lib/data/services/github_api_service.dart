@@ -18,29 +18,33 @@ class GithubApiService {
     this.onRateLimitUpdate,
   });
 
-  String get _imagesBaseUrl => 'https://api.github.com/repos/$owner/$imageRepo/contents';
-  String get _releasesUrl => 'https://api.github.com/repos/$owner/$appRepo/releases/latest';
+  String get _imagesBaseUrl =>
+      'https://api.github.com/repos/$owner/$imageRepo/contents';
+  String get _releasesUrl =>
+      'https://api.github.com/repos/$owner/$appRepo/releases/latest';
 
   Map<String, String> get _headers {
-    final result = <String, String>{
-      'Accept': 'application/vnd.github.v3+json',
-    };
+    final result = <String, String>{'Accept': 'application/vnd.github.v3+json'};
     if (token.isNotEmpty) {
       result['Authorization'] = 'token $token';
     }
+    result['Content-Type'] = 'application/json';
     return result;
   }
 
   void _updateRateLimit(http.BaseResponse response) {
-    if (onRateLimitUpdate != null && response.headers.containsKey('x-ratelimit-remaining')) {
-      onRateLimitUpdate!(response.headers['x-ratelimit-remaining'] ?? 'Unknown');
+    if (onRateLimitUpdate != null &&
+        response.headers.containsKey('x-ratelimit-remaining')) {
+      onRateLimitUpdate!(
+        response.headers['x-ratelimit-remaining'] ?? 'Unknown',
+      );
     }
   }
 
   Future<List<Map<String, dynamic>>> fetchRawImages() async {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final url = '$_imagesBaseUrl?t=$timestamp';
-    
+
     final response = await http
         .get(Uri.parse(url), headers: _headers)
         .timeout(const Duration(seconds: 20));
@@ -51,15 +55,21 @@ class GithubApiService {
       final List<dynamic> data = json.decode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception('GitHub API Error (${response.statusCode}): ${response.body}');
+      throw Exception(
+        'GitHub API Error (${response.statusCode}): ${response.body}',
+      );
     }
   }
 
-  Future<Map<String, dynamic>> uploadImage(String filename, Uint8List fileBytes) async {
+  Future<Map<String, dynamic>> uploadImage(
+    String filename,
+    Uint8List fileBytes,
+  ) async {
     final base64Image = base64Encode(fileBytes);
+    final encodedFilename = Uri.encodeComponent(filename);
     final response = await http
         .put(
-          Uri.parse('$_imagesBaseUrl/$filename'),
+          Uri.parse('$_imagesBaseUrl/$encodedFilename'),
           headers: _headers,
           body: jsonEncode({
             'message': 'Upload $filename (Android App)',
@@ -78,11 +88,15 @@ class GithubApiService {
   }
 
   Future<void> deleteImage(String path, String sha) async {
+    final encodedPath = Uri.encodeComponent(path);
     final response = await http
         .delete(
-          Uri.parse('$_imagesBaseUrl/$path'),
+          Uri.parse('$_imagesBaseUrl/$encodedPath'),
           headers: _headers,
-          body: jsonEncode({'message': 'Delete $path (Android App)', 'sha': sha}),
+          body: jsonEncode({
+            'message': 'Delete $path (Android App)',
+            'sha': sha,
+          }),
         )
         .timeout(const Duration(seconds: 30));
 
