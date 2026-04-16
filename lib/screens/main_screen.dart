@@ -129,10 +129,10 @@ class _MainScreenState extends State<MainScreen>
                             tabs: List.generate(4, (index) {
                               final animation = _tabController.animation!;
                               final icons = [
-                                Symbols.home_rounded,
-                                Symbols.favorite_rounded,
-                                Symbols.add_circle_rounded,
-                                Symbols.settings_rounded,
+                                Symbols.home,
+                                Symbols.favorite,
+                                Symbols.add_circle,
+                                Symbols.settings,
                               ];
 
                               return AnimatedBuilder(
@@ -142,25 +142,20 @@ class _MainScreenState extends State<MainScreen>
                                       (1.0 - (animation.value - index).abs())
                                           .clamp(0.0, 1.0);
 
-                                  // Interpolate colors between unselected and selected
-                                  final theme = Theme.of(context);
-                                  final unselectedColor =
-                                      theme.colorScheme.onSurfaceVariant;
-                                  final selectedColor = appBarTextColor;
-                                  final color = Color.lerp(
-                                    unselectedColor,
-                                    selectedColor,
-                                    progress,
-                                  );
-
                                   return Tab(
                                     icon: Icon(
                                       icons[index],
                                       size: 28,
-                                      color: color,
-                                      // Thổi hồn vào icon khi chọn
                                       fill: progress > 0.5 ? 1.0 : 0.0,
-                                      weight: 400 + (300 * progress),
+                                      weight: 400 + (200 * progress),
+                                      grade: progress > 0.5 ? 0.25 : 0.0,
+                                      color: progress > 0.5
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.primary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
                                     ),
                                   );
                                 },
