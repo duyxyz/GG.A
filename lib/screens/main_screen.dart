@@ -7,6 +7,7 @@ import '../tabs/home_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../utils/update_manager.dart';
 import '../logic/viewmodels/home_view_model.dart';
+import 'package:material_symbols_icons/symbols.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -34,7 +35,7 @@ class _MainScreenState extends State<MainScreen>
     _tabController = TabController(length: 4, vsync: this);
     _nestedScrollController = ScrollController();
     _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
+      if (_currentIndex != _tabController.index) {
         setState(() {
           _currentIndex = _tabController.index;
         });
@@ -143,14 +144,35 @@ class _MainScreenState extends State<MainScreen>
                             ).colorScheme.onSurfaceVariant,
                             indicatorColor: appBarTextColor,
                             dividerColor: Colors.transparent,
-                            tabs: const [
-                              Tab(icon: Icon(Icons.home_rounded, size: 28)),
-                              Tab(icon: Icon(Icons.favorite_rounded, size: 28)),
-                              Tab(
-                                icon: Icon(Icons.add_circle_rounded, size: 28),
-                              ),
-                              Tab(icon: Icon(Icons.settings_rounded, size: 28)),
-                            ],
+                            tabs: List.generate(4, (index) {
+                              final animation = _tabController.animation!;
+                              final icons = [
+                                Symbols.home_rounded,
+                                Symbols.favorite_rounded,
+                                Symbols.add_circle_rounded,
+                                Symbols.settings_rounded,
+                              ];
+
+                              return AnimatedBuilder(
+                                animation: animation,
+                                builder: (context, _) {
+                                  double progress =
+                                      (1.0 - (animation.value - index).abs())
+                                          .clamp(0.0, 1.0);
+
+                                  return Tab(
+                                    icon: Icon(
+                                      icons[index],
+                                      size: 28,
+                                      // Tăng mạnh Weight và Fill để thấy rõ sự khác biệt
+                                      fill: progress > 0.5 ? 1.0 : 0.0,
+                                      weight: 400 + (300 * progress),
+                                      grade: progress > 0.5 ? 0.25 : 0.0,
+                                    ),
+                                  );
+                                },
+                              );
+                            }),
                             onTap: (index) {
                               if (index == _currentIndex) {
                                 if (_nestedScrollController.hasClients) {

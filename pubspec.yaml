@@ -54,6 +54,7 @@ dependencies:
   supabase_flutter: ^2.12.0
   image: ^4.8.0
   dotted_border: 2.1.0
+  material_symbols_icons: ^4.2928.1
 dev_dependencies:
   flutter_test:
     sdk: flutter
