@@ -70,7 +70,7 @@ class _MainScreenState extends State<MainScreen>
     UpdateBottomSheet.show(context, release);
   }
 
-  Widget _buildAnimatedTab(int index, IconData iconData) {
+  Widget _buildAnimatedTab(int index, IconData outline, IconData filled) {
     final animation = _tabController.animation!;
     return AnimatedBuilder(
       animation: animation,
@@ -82,9 +82,8 @@ class _MainScreenState extends State<MainScreen>
 
         return Tab(
           icon: Icon(
-            iconData,
+            progress > 0.5 ? filled : outline,
             size: 28,
-            fill: progress > 0.5 ? 1.0 : 0.0,
             color: Color.lerp(
               Theme.of(context).colorScheme.onSurfaceVariant,
               Theme.of(context).colorScheme.primary,
@@ -152,12 +151,26 @@ class _MainScreenState extends State<MainScreen>
                             ).colorScheme.onSurfaceVariant,
                             indicatorColor: appBarTextColor,
                             dividerColor: Colors.transparent,
-                            tabs: [
-                              _buildAnimatedTab(0, Symbols.home_rounded),
-                              _buildAnimatedTab(1, Symbols.favorite_rounded),
-                              _buildAnimatedTab(2, Symbols.add_circle_rounded),
-                              _buildAnimatedTab(3, Symbols.settings_rounded),
-                            ],
+                            tabs: List.generate(4, (index) {
+                              final outlinedIcons = [
+                                Icons.home_outlined,
+                                Icons.favorite_outline_rounded,
+                                Icons.add_circle_outline_rounded,
+                                Icons.settings_outlined,
+                              ];
+                              final filledIcons = [
+                                Icons.home_rounded,
+                                Icons.favorite_rounded,
+                                Icons.add_circle_rounded,
+                                Icons.settings_rounded,
+                              ];
+
+                              return _buildAnimatedTab(
+                                index,
+                                outlinedIcons[index],
+                                filledIcons[index],
+                              );
+                            }),
                             onTap: (index) {
                               if (index == _currentIndex) {
                                 if (_nestedScrollController.hasClients) {

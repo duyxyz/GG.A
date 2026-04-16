@@ -15,13 +15,16 @@ Future<void> startUpdateProcess(
 
   try {
     debugPrint("Bắt đầu quy trình cập nhật: ${release.tagName}");
-    
-    final bestAsset = await AppDependencies.instance.updateViewModel.findBestAssetFromRelease(release);
+
+    final bestAsset = await AppDependencies.instance.updateViewModel
+        .findBestAssetFromRelease(release);
 
     if (bestAsset == null) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không tìm thấy bản APK phù hợp cho thiết bị này!')),
+          const SnackBar(
+            content: Text('Không tìm thấy bản APK phù hợp cho thiết bị này!'),
+          ),
         );
       }
       return;
@@ -46,7 +49,11 @@ Future<void> startUpdateProcess(
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(fileName, style: const TextStyle(fontSize: 11, color: Colors.grey), textAlign: TextAlign.center),
+              Text(
+                fileName,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               ValueListenableBuilder<double>(
                 valueListenable: progressNotifier,
@@ -55,7 +62,10 @@ Future<void> startUpdateProcess(
                     children: [
                       LinearProgressIndicator(value: value),
                       const SizedBox(height: 8),
-                      Text('${(value * 100).toStringAsFixed(0)}%', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        '${(value * 100).toStringAsFixed(0)}%',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ],
                   );
                 },
@@ -72,7 +82,12 @@ Future<void> startUpdateProcess(
     final oldFile = File(savePath);
     if (await oldFile.exists()) await oldFile.delete();
 
-    final dio = Dio(BaseOptions(connectTimeout: const Duration(seconds: 15), receiveTimeout: const Duration(minutes: 5)));
+    final dio = Dio(
+      BaseOptions(
+        connectTimeout: const Duration(seconds: 15),
+        receiveTimeout: const Duration(minutes: 5),
+      ),
+    );
     await dio.download(
       downloadUrl,
       savePath,
@@ -88,14 +103,19 @@ Future<void> startUpdateProcess(
     final result = await OpenFilex.open(savePath);
     if (result.type != ResultType.done) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi mở APK: ${result.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi mở APK: ${result.message}')),
+        );
       }
     }
   } catch (e) {
     debugPrint("Lỗi cập nhật: $e");
     if (context.mounted) {
-      if (Navigator.canPop(context)) Navigator.of(context, rootNavigator: true).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      if (Navigator.canPop(context))
+        Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
     }
   }
 }
