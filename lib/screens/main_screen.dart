@@ -30,6 +30,23 @@ class _MainScreenState extends State<MainScreen>
 
   int _currentIndex = 0;
 
+  static const IconData _homeIcon = IconData(
+    0xe88a,
+    fontFamily: 'CustomSymbols',
+  );
+  static const IconData _favoriteIcon = IconData(
+    0xe87d,
+    fontFamily: 'CustomSymbols',
+  );
+  static const IconData _addIcon = IconData(
+    0xe39d,
+    fontFamily: 'CustomSymbols',
+  );
+  static const IconData _settingsIcon = IconData(
+    0xefec,
+    fontFamily: 'CustomSymbols',
+  );
+
   @override
   void initState() {
     super.initState();
@@ -82,7 +99,7 @@ class _MainScreenState extends State<MainScreen>
 
         return Tab(
           icon: Icon(
-            IconData(iconData.codePoint, fontFamily: 'CustomSymbols'),
+            iconData,
             size: 28,
             fill: progress > 0.5 ? 1.0 : 0.0,
             color: Color.lerp(
@@ -151,15 +168,12 @@ class _MainScreenState extends State<MainScreen>
                             ).colorScheme.onSurfaceVariant,
                             indicatorColor: appBarTextColor,
                             dividerColor: Colors.transparent,
-                            tabs: List.generate(4, (index) {
-                              final icons = [
-                                Symbols.home_rounded,
-                                Symbols.favorite_rounded,
-                                Symbols.add_circle_rounded,
-                                Symbols.settings_rounded,
-                              ];
-                              return _buildAnimatedTab(index, icons[index]);
-                            }),
+                            tabs: [
+                              _buildAnimatedTab(0, _homeIcon),
+                              _buildAnimatedTab(1, _favoriteIcon),
+                              _buildAnimatedTab(2, _addIcon),
+                              _buildAnimatedTab(3, _settingsIcon),
+                            ],
                             onTap: (index) {
                               if (index == _currentIndex) {
                                 if (_nestedScrollController.hasClients) {
