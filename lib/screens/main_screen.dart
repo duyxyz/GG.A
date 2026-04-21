@@ -82,28 +82,40 @@ class _MainScreenState extends State<MainScreen>
       },
       child: Scaffold(
         key: _scaffoldKey,
-        drawer: SafeArea(
-          child: Drawer(
-            child: Scaffold(
-              appBar: AppBar(
-                title: const Text(
-                  'Cài đặt',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        drawer: NavigationDrawer(
+          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 28, top: 24, bottom: 0),
+              child: Text(
+                'Cài đặt',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
-                automaticallyImplyLeading: false,
               ),
-              body: const SettingsTab(isSelected: true),
             ),
-          ),
+            const SettingsTab(isSelected: true),
+          ],
         ),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
             showModalBottomSheet(
               context: context,
               isScrollControlled: true,
-              builder: (_) => SizedBox(
-                height: MediaQuery.of(context).size.height * 0.85,
-                child: Scaffold(
+              useSafeArea: true,
+              showDragHandle: true,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHigh,
+              builder: (_) => DraggableScrollableSheet(
+                initialChildSize: 0.9,
+                minChildSize: 0.5,
+                maxChildSize: 1.0,
+                expand: false,
+                builder: (_, scrollController) => Scaffold(
+                  backgroundColor: Colors.transparent,
                   appBar: AppBar(
                     title: const Text(
                       'Thêm Ảnh',
@@ -113,6 +125,7 @@ class _MainScreenState extends State<MainScreen>
                       ),
                     ),
                     leading: const CloseButton(),
+                    forceMaterialTransparency: true,
                   ),
                   body: AddTab(viewModel: homeVM, onStateChanged: () {}),
                 ),

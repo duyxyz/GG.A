@@ -105,8 +105,8 @@ class SettingsTabState extends State<SettingsTab>
       child: ListenableBuilder(
         listenable: config,
         builder: (context, _) => CustomScrollView(
-          primary: true,
-          physics: const AlwaysScrollableScrollPhysics(),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           slivers: [
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
