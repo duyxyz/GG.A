@@ -108,9 +108,6 @@ class SettingsTabState extends State<SettingsTab>
           primary: true,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverOverlapInjector(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            ),
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               sliver: SliverList(

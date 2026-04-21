@@ -111,8 +111,9 @@ Future<void> startUpdateProcess(
   } catch (e) {
     debugPrint("Lỗi cập nhật: $e");
     if (context.mounted) {
-      if (Navigator.canPop(context))
+      if (Navigator.canPop(context)) {
         Navigator.of(context, rootNavigator: true).pop();
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));

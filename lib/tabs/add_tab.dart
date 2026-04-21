@@ -145,12 +145,6 @@ class AddTabState extends State<AddTab> with AutomaticKeepAliveClientMixin {
             primary: true,
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverOverlapInjector(
-                handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                  context,
-                ),
-              ),
-
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverGrid(

@@ -7,7 +7,6 @@ import '../tabs/home_tab.dart';
 import '../tabs/settings_tab.dart';
 import '../utils/update_manager.dart';
 import '../logic/viewmodels/home_view_model.dart';
-import 'package:material_symbols_icons/symbols.dart';
 import '../widgets/update_bottom_sheet.dart';
 
 class MainScreen extends StatefulWidget {
@@ -21,19 +20,17 @@ class _MainScreenState extends State<MainScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late ScrollController _nestedScrollController;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final GlobalKey<HomeTabState> _homeTabKey = GlobalKey<HomeTabState>();
   final GlobalKey<FavoritesTabState> _favoritesTabKey =
       GlobalKey<FavoritesTabState>();
-  final GlobalKey<AddTabState> _addTabKey = GlobalKey<AddTabState>();
-  final GlobalKey<SettingsTabState> _settingsTabKey =
-      GlobalKey<SettingsTabState>();
 
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _nestedScrollController = ScrollController();
     _tabController.addListener(() {
       if (_currentIndex != _tabController.index) {
@@ -70,31 +67,6 @@ class _MainScreenState extends State<MainScreen>
     UpdateBottomSheet.show(context, release);
   }
 
-  Widget _buildAnimatedTab(int index, IconData outline, IconData filled) {
-    final animation = _tabController.animation!;
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, _) {
-        final double progress = (1.0 - (animation.value - index).abs()).clamp(
-          0.0,
-          1.0,
-        );
-
-        return Tab(
-          icon: Icon(
-            progress > 0.5 ? filled : outline,
-            size: 28,
-            color: Color.lerp(
-              Theme.of(context).colorScheme.onSurfaceVariant,
-              Theme.of(context).colorScheme.primary,
-              progress,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final homeVM = AppDependencies.instance.homeViewModel;
@@ -109,6 +81,46 @@ class _MainScreenState extends State<MainScreen>
         }
       },
       child: Scaffold(
+        key: _scaffoldKey,
+        drawer: SafeArea(
+          child: Drawer(
+            child: Scaffold(
+              appBar: AppBar(
+                title: const Text(
+                  'Cài đặt',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                automaticallyImplyLeading: false,
+              ),
+              body: const SettingsTab(isSelected: true),
+            ),
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => SizedBox(
+                height: MediaQuery.of(context).size.height * 0.85,
+                child: Scaffold(
+                  appBar: AppBar(
+                    title: const Text(
+                      'Thêm Ảnh',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    leading: const CloseButton(),
+                  ),
+                  body: AddTab(viewModel: homeVM, onStateChanged: () {}),
+                ),
+              ),
+            );
+          },
+          child: const Icon(Icons.add_rounded),
+        ),
         body: SafeArea(
           bottom: false,
           child: NestedScrollView(
@@ -117,91 +129,36 @@ class _MainScreenState extends State<MainScreen>
             floatHeaderSlivers: true,
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
-                ListenableBuilder(
-                  listenable: _tabController.animation!,
-                  builder: (context, _) {
-                    final animation = _tabController.animation;
-                    double animValue = _tabController.index.toDouble();
-                    if (animation != null) {
-                      animValue = animation.value;
-                    }
-
-                    // factor = 1.0 at index 0, fades to 0.0 as we move to index 1, 2, 3
-                    final homeFactor = (1.0 - animValue).clamp(0.0, 1.0);
-                    final currentExpandedHeight = (homeFactor * 44.0) + 48.0;
-
-                    return SliverOverlapAbsorber(
-                      handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                        context,
+                SliverOverlapAbsorber(
+                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                    context,
+                  ),
+                  sliver: SliverPersistentHeader(
+                    pinned: true,
+                    delegate: _MainAppBarDelegate(
+                      paddingTop: 0.0,
+                      expandedHeight: 92.0,
+                      appBarTextColor: appBarTextColor,
+                      homeVM: homeVM,
+                      forceElevated: innerBoxIsScrolled,
+                      onMenuPressed: () =>
+                          _scaffoldKey.currentState?.openDrawer(),
+                      tabBar: TabBar(
+                        controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.label,
+                        labelColor: appBarTextColor,
+                        unselectedLabelColor: Theme.of(
+                          context,
+                        ).colorScheme.onSurfaceVariant,
+                        indicatorColor: appBarTextColor,
+                        dividerColor: Colors.transparent,
+                        tabs: const [
+                          Tab(text: "Trang chủ"),
+                          Tab(text: "Yêu thích"),
+                        ],
                       ),
-                      sliver: SliverPersistentHeader(
-                        pinned: true,
-                        delegate: _MainAppBarDelegate(
-                          paddingTop: 0.0,
-                          expandedHeight: currentExpandedHeight,
-                          appBarTextColor: appBarTextColor,
-                          homeVM: homeVM,
-                          forceElevated: innerBoxIsScrolled,
-                          tabBar: TabBar(
-                            controller: _tabController,
-                            indicatorSize: TabBarIndicatorSize.label,
-                            labelColor: appBarTextColor,
-                            unselectedLabelColor: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                            indicatorColor: appBarTextColor,
-                            dividerColor: Colors.transparent,
-                            tabs: List.generate(4, (index) {
-                              final outlinedIcons = [
-                                Icons.home_outlined,
-                                Icons.favorite_outline_rounded,
-                                Icons.add_circle_outline_rounded,
-                                Icons.settings_outlined,
-                              ];
-                              final filledIcons = [
-                                Icons.home_rounded,
-                                Icons.favorite_rounded,
-                                Icons.add_circle_rounded,
-                                Icons.settings_rounded,
-                              ];
-
-                              return _buildAnimatedTab(
-                                index,
-                                outlinedIcons[index],
-                                filledIcons[index],
-                              );
-                            }),
-                            onTap: (index) {
-                              if (index == _currentIndex) {
-                                if (_nestedScrollController.hasClients) {
-                                  _nestedScrollController.animateTo(
-                                    0,
-                                    duration: const Duration(milliseconds: 500),
-                                    curve: Curves.easeOutQuart,
-                                  );
-                                }
-                                switch (index) {
-                                  case 0:
-                                    _homeTabKey.currentState?.scrollToTop();
-                                    break;
-                                  case 1:
-                                    _favoritesTabKey.currentState
-                                        ?.scrollToTop();
-                                    break;
-                                  case 2:
-                                    _addTabKey.currentState?.scrollToTop();
-                                    break;
-                                  case 3:
-                                    _settingsTabKey.currentState?.scrollToTop();
-                                    break;
-                                }
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ];
             },
@@ -210,15 +167,6 @@ class _MainScreenState extends State<MainScreen>
               children: [
                 HomeTab(key: _homeTabKey, viewModel: homeVM),
                 FavoritesTab(key: _favoritesTabKey, viewModel: homeVM),
-                AddTab(
-                  key: _addTabKey,
-                  viewModel: homeVM,
-                  onStateChanged: () => setState(() {}),
-                ),
-                SettingsTab(
-                  key: _settingsTabKey,
-                  isSelected: _tabController.index == 3,
-                ),
               ],
             ),
           ),
@@ -235,6 +183,7 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
   final HomeViewModel homeVM;
   final bool forceElevated;
   final Widget tabBar;
+  final VoidCallback onMenuPressed;
 
   _MainAppBarDelegate({
     required this.paddingTop,
@@ -243,6 +192,7 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
     required this.homeVM,
     required this.forceElevated,
     required this.tabBar,
+    required this.onMenuPressed,
   });
 
   @override
@@ -288,6 +238,13 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
                   children: [
+                    IconButton(
+                      icon: Icon(Icons.menu_rounded, color: appBarTextColor),
+                      onPressed: onMenuPressed,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Gay Group',
