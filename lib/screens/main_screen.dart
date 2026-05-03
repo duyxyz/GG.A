@@ -48,7 +48,6 @@ class _MainScreenState extends State<MainScreen>
       }
     });
 
-    // Initialize data through ViewModels
     AppDependencies.instance.homeViewModel.loadImages();
     _checkForUpdateSilent();
     cleanupUpdateFiles();
@@ -65,7 +64,6 @@ class _MainScreenState extends State<MainScreen>
     final updateVM = AppDependencies.instance.updateViewModel;
     await updateVM.checkForUpdates();
     if (!mounted) return;
-
     if (updateVM.latestRelease != null) {
       _showUpdateDialog(context, updateVM.latestRelease!);
     }
@@ -79,9 +77,11 @@ class _MainScreenState extends State<MainScreen>
     final ImagePicker picker = ImagePicker();
     final List<XFile> images = await picker.pickMultiImage();
     if (images.isEmpty) return;
-
     if (!mounted) return;
-    ValueNotifier<String> statusNotifier = ValueNotifier('Đang chuẩn bị...');
+
+    final ValueNotifier<String> statusNotifier =
+        ValueNotifier('Đang chuẩn bị...');
+    final ValueNotifier<double> progressNotifier = ValueNotifier(0.0);
 
     showDialog(
       context: context,
@@ -94,13 +94,19 @@ class _MainScreenState extends State<MainScreen>
             const SizedBox(height: 16),
             ValueListenableBuilder<String>(
               valueListenable: statusNotifier,
-              builder: (context, status, child) {
-                return Text(
-                  status,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                );
-              },
+              builder: (context, status, _) => Text(
+                status,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<double>(
+              valueListenable: progressNotifier,
+              builder: (context, progress, _) => LinearProgressIndicator(
+                value: progress,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ],
         ),
@@ -111,6 +117,8 @@ class _MainScreenState extends State<MainScreen>
       final List<Map<String, dynamic>> processedImages = [];
       for (int i = 0; i < images.length; i++) {
         statusNotifier.value = 'Đang xử lý ${i + 1}/${images.length}...';
+        progressNotifier.value = i / images.length;
+
         final file = images[i];
         final bytes = await file.readAsBytes();
         final compressed = await FlutterImageCompress.compressWithList(
@@ -122,7 +130,7 @@ class _MainScreenState extends State<MainScreen>
         );
         final imageInfo = await decodeImageFromList(compressed);
         processedImages.add({
-          'name': 'image.webp',
+          'name': '${DateTime.now().millisecondsSinceEpoch}_$i.webp',
           'bytes': compressed,
           'width': imageInfo.width,
           'height': imageInfo.height,
@@ -132,25 +140,38 @@ class _MainScreenState extends State<MainScreen>
       }
 
       statusNotifier.value = 'Đang gửi lên server...';
+      progressNotifier.value = 1.0;
+
       final homeVM = AppDependencies.instance.homeViewModel;
       final bool success = await homeVM.uploadImages(processedImages);
 
       if (mounted) {
-        Navigator.pop(context); // Close dialog
-        if (success) {
-          AppHaptics.mediumImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Đã tải ảnh lên thành công!')),
-          );
-        }
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              success ? 'Đã tải ảnh lên thành công!' : 'Tải ảnh thất bại.',
+            ),
+            backgroundColor: success
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.error,
+          ),
+        );
+        if (success) AppHaptics.mediumImpact();
       }
     } catch (e) {
       if (mounted) {
-        Navigator.pop(context); // Close dialog
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $e'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
+    } finally {
+      statusNotifier.dispose();
+      progressNotifier.dispose();
     }
   }
 
@@ -190,7 +211,6 @@ class _MainScreenState extends State<MainScreen>
           bottom: false,
           child: NestedScrollView(
             controller: _nestedScrollController,
-
             floatHeaderSlivers: true,
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
@@ -204,7 +224,6 @@ class _MainScreenState extends State<MainScreen>
                       paddingTop: 0.0,
                       expandedHeight: 92.0,
                       appBarTextColor: appBarTextColor,
-                      homeVM: homeVM,
                       forceElevated: innerBoxIsScrolled,
                       onMenuPressed: () =>
                           _scaffoldKey.currentState?.openDrawer(),
@@ -255,10 +274,12 @@ class _MainScreenState extends State<MainScreen>
 }
 
 class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
+  static const double _titleRowHeight = 44.0;
+  static const double _tabBarHeight = 48.0;
+
   final double paddingTop;
   final double expandedHeight;
   final Color appBarTextColor;
-  final HomeViewModel homeVM;
   final bool forceElevated;
   final Widget tabBar;
   final VoidCallback onMenuPressed;
@@ -269,7 +290,6 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
     required this.paddingTop,
     required this.expandedHeight,
     required this.appBarTextColor,
-    required this.homeVM,
     required this.forceElevated,
     required this.tabBar,
     required this.onMenuPressed,
@@ -281,15 +301,15 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => paddingTop + expandedHeight;
 
   @override
-  double get minExtent => paddingTop + 48.0;
+  double get minExtent => paddingTop + _tabBarHeight;
 
   @override
   bool shouldRebuild(covariant _MainAppBarDelegate oldDelegate) {
     return expandedHeight != oldDelegate.expandedHeight ||
         paddingTop != oldDelegate.paddingTop ||
         appBarTextColor != oldDelegate.appBarTextColor ||
-        homeVM != oldDelegate.homeVM ||
-        forceElevated != oldDelegate.forceElevated;
+        forceElevated != oldDelegate.forceElevated ||
+        tabBar != oldDelegate.tabBar;
   }
 
   @override
@@ -300,7 +320,7 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final double currentHeight = maxExtent - shrinkOffset;
     final double currentFlexHeight = currentHeight - minExtent;
-    final double factor = (currentFlexHeight / 44.0).clamp(0.0, 1.0);
+    final double factor = (currentFlexHeight / _titleRowHeight).clamp(0.0, 1.0);
 
     return Material(
       color: Theme.of(context).colorScheme.surface,
@@ -309,70 +329,46 @@ class _MainAppBarDelegate extends SliverPersistentHeaderDelegate {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned(
-            top: paddingTop - ((1.0 - factor) * 44.0),
-            left: 0,
-            right: 0,
-            height: 44.0,
-            child: Opacity(
-              opacity: factor,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.menu_rounded, color: appBarTextColor),
-                      onPressed: onMenuPressed,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: onTitleTap,
-                        child: Text(
-                          'Gay Group',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 22,
-                            color: appBarTextColor,
-                          ),
-                        ),
+          // Tầng 1: Title row
+          if (factor > 0)
+            Positioned(
+              top: paddingTop - ((1.0 - factor) * _titleRowHeight),
+              left: 0,
+              right: 0,
+              height: _titleRowHeight,
+              child: Opacity(
+                opacity: factor,
+                child: NavigationToolbar(
+                  leading: IconButton(
+                    icon: Icon(Icons.menu_rounded, color: appBarTextColor),
+                    onPressed: onMenuPressed,
+                  ),
+                  middle: GestureDetector(
+                    onTap: onTitleTap,
+                    child: Text(
+                      'GG',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        color: appBarTextColor,
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(
-                              Icons.add_rounded,
-                              color: appBarTextColor,
-                            ),
-                            onPressed: onAddPressed,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${homeVM.images.length} ảnh',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 18,
-                                  color: appBarTextColor,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(Icons.add_rounded, color: appBarTextColor),
+                    onPressed: onAddPressed,
+                  ),
                 ),
               ),
             ),
+          // Tầng 2: TabBar
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: _tabBarHeight,
+            child: tabBar,
           ),
-          Positioned(bottom: 0, left: 0, right: 0, height: 48.0, child: tabBar),
         ],
       ),
     );
